@@ -172,6 +172,22 @@ management systems.
 | `get_order_status`    | Check order execution status (stocks and options)         |
 | `get_live_orders`     | Get all live/open orders for monitoring and validation    |
 | `confirm_order`       | Manually confirm orders that require confirmation         |
+| `cancel_order`        | Cancel a live order                                       |
+| `modify_order`        | Modify an existing order (quantity, price, stop price)    |
+
+### Contract Search & Discovery
+
+| Tool                    | Description                                                     |
+| ----------------------- | --------------------------------------------------------------- |
+| `search_contracts`      | Search for contracts by symbol or criteria (stocks, options, futures, etc.) |
+| `get_contract_details`  | Get detailed contract specifications and information            |
+
+### P&L and Trading History
+
+| Tool                  | Description                                               |
+| --------------------- | --------------------------------------------------------- |
+| `get_pnl`             | Get profit and loss information by account                |
+| `get_trades_history`  | Get trades history with configurable lookback period      |
 
 ### Stock Orders
 
@@ -334,6 +350,108 @@ Get aggregated portfolio summary using `get_portfolio_summary`:
 // Grouped by security type
 {
   "groupBy": "secType"
+}
+```
+
+### Order Management
+
+Cancel an order using `cancel_order`:
+
+```json
+{
+  "orderId": "12345",
+  "accountId": "U12345"
+}
+```
+
+Modify an existing order using `modify_order`:
+
+```json
+// Change quantity
+{
+  "orderId": "12345",
+  "accountId": "U12345",
+  "quantity": 20
+}
+
+// Update limit price
+{
+  "orderId": "12345",
+  "accountId": "U12345",
+  "price": 155.50
+}
+
+// Update stop price
+{
+  "orderId": "12345",
+  "accountId": "U12345",
+  "stopPrice": 145.00
+}
+```
+
+### Contract Search
+
+Search for contracts using `search_contracts`:
+
+```json
+// Search stocks
+{
+  "query": "AAPL",
+  "secType": "STK"
+}
+
+// Search options
+{
+  "query": "SPY",
+  "secType": "OPT"
+}
+
+// Search with filters
+{
+  "query": "TSLA",
+  "secType": "STK",
+  "exchange": "NASDAQ",
+  "currency": "USD",
+  "limit": 5
+}
+```
+
+Get contract details using `get_contract_details`:
+
+```json
+{
+  "conid": 265598
+}
+```
+
+### P&L and Trading History
+
+Get profit and loss using `get_pnl`:
+
+```json
+// All accounts
+{}
+
+// Specific account
+{
+  "accountId": "U12345"
+}
+```
+
+Get trades history using `get_trades_history`:
+
+```json
+// Last 7 days (default)
+{}
+
+// Specific account
+{
+  "accountId": "U12345"
+}
+
+// Custom period
+{
+  "days": 30
 }
 ```
 

@@ -16,7 +16,13 @@ import {
   PlaceOptionOrderZodShape,
   GetOrderStatusZodShape,
   GetLiveOrdersZodShape,
-  ConfirmOrderZodShape
+  ConfirmOrderZodShape,
+  CancelOrderZodShape,
+  ModifyOrderZodShape,
+  SearchContractsZodShape,
+  GetContractDetailsZodShape,
+  GetPnLZodShape,
+  GetTradesHistoryZodShape
 } from "./tool-definitions.js";
 
 export function registerTools(
@@ -177,5 +183,74 @@ export function registerTools(
     "Manually confirm an order that requires confirmation. Usage: `{ \"replyId\": \"742a95a7-55f6-4d67-861b-2fd3e2b61e3c\", \"messageIds\": [\"o10151\", \"o10153\"] }`.",
     ConfirmOrderZodShape,
     async (args) => await handlers.confirmOrder(args)
+  );
+
+  // ── Phase 4: Order Management Enhancement ────────────────────────────────
+
+  // Register cancel_order tool
+  server.tool(
+    "cancel_order",
+    "Cancel a live order. Examples:\n" +
+    "- Cancel order: `{ \"orderId\": \"12345\", \"accountId\": \"U12345\" }`",
+    CancelOrderZodShape,
+    async (args) => await handlers.cancelOrder(args)
+  );
+
+  // Register modify_order tool
+  server.tool(
+    "modify_order",
+    "Modify an existing order. Examples:\n" +
+    "- Change quantity: `{ \"orderId\": \"12345\", \"accountId\": \"U12345\", \"quantity\": 20 }`\n" +
+    "- Update limit price: `{ \"orderId\": \"12345\", \"accountId\": \"U12345\", \"price\": 155.50 }`\n" +
+    "- Update stop price: `{ \"orderId\": \"12345\", \"accountId\": \"U12345\", \"stopPrice\": 145.00 }`",
+    ModifyOrderZodShape,
+    async (args) => await handlers.modifyOrder(args)
+  );
+
+  // ── Phase 5: Contract Search & Discovery ──────────────────────────────────
+
+  // Register search_contracts tool
+  server.tool(
+    "search_contracts",
+    "Search for contracts by symbol or criteria. Examples:\n" +
+    "- Search stocks: `{ \"query\": \"AAPL\", \"secType\": \"STK\" }`\n" +
+    "- Search options: `{ \"query\": \"SPY\", \"secType\": \"OPT\" }`\n" +
+    "- Search with filters: `{ \"query\": \"TSLA\", \"secType\": \"STK\", \"exchange\": \"NASDAQ\", \"currency\": \"USD\" }`\n" +
+    "- Limit results: `{ \"query\": \"AAPL\", \"limit\": 5 }`",
+    SearchContractsZodShape,
+    async (args) => await handlers.searchContracts(args)
+  );
+
+  // Register get_contract_details tool
+  server.tool(
+    "get_contract_details",
+    "Get detailed contract information. Examples:\n" +
+    "- Get details: `{ \"conid\": 265598 }`",
+    GetContractDetailsZodShape,
+    async (args) => await handlers.getContractDetails(args)
+  );
+
+  // ── Phase 6: P&L and Trading History ──────────────────────────────────────
+
+  // Register get_pnl tool
+  server.tool(
+    "get_pnl",
+    "Get profit and loss information. Examples:\n" +
+    "- All accounts: `{}`\n" +
+    "- Specific account: `{ \"accountId\": \"U12345\" }`\n" +
+    "- By period: `{ \"period\": \"day\" }` or `{ \"period\": \"week\" }`",
+    GetPnLZodShape,
+    async (args) => await handlers.getPnL(args)
+  );
+
+  // Register get_trades_history tool
+  server.tool(
+    "get_trades_history",
+    "Get trades history. Examples:\n" +
+    "- Last 7 days (default): `{}`\n" +
+    "- Specific account: `{ \"accountId\": \"U12345\" }`\n" +
+    "- Custom period: `{ \"days\": 30 }` for last 30 days",
+    GetTradesHistoryZodShape,
+    async (args) => await handlers.getTradesHistory(args)
   );
 }

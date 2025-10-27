@@ -103,6 +103,44 @@ export const ConfirmOrderZodShape = {
   messageIds: z.array(z.string())
 };
 
+// Phase 4: Order Management Enhancement
+export const CancelOrderZodShape = {
+  orderId: z.string(),
+  accountId: z.string()
+};
+
+export const ModifyOrderZodShape = {
+  orderId: z.string(),
+  accountId: z.string(),
+  quantity: IntegerOrStringIntegerZod.optional(),
+  price: z.number().optional(),
+  stopPrice: z.number().optional()
+};
+
+// Phase 5: Contract Search & Discovery
+export const SearchContractsZodShape = {
+  query: z.string(),
+  secType: z.enum(["STK", "OPT", "FUT", "CASH", "BOND"]).optional(),
+  exchange: z.string().optional(),
+  currency: z.string().optional(),
+  limit: z.number().optional()
+};
+
+export const GetContractDetailsZodShape = {
+  conid: z.number()
+};
+
+// Phase 6: P&L and Trading History
+export const GetPnLZodShape = {
+  accountId: z.string().optional(),
+  period: z.enum(["day", "week", "month", "year"]).optional()
+};
+
+export const GetTradesHistoryZodShape = {
+  accountId: z.string().optional(),
+  days: z.number().optional() // Number of days to look back
+};
+
 // Full Zod Schemas (for validation if needed)
 export const AuthenticateZodSchema = z.object(AuthenticateZodShape);
 
@@ -160,6 +198,18 @@ export const GetLiveOrdersZodSchema = z.object(GetLiveOrdersZodShape);
 
 export const ConfirmOrderZodSchema = z.object(ConfirmOrderZodShape);
 
+export const CancelOrderZodSchema = z.object(CancelOrderZodShape);
+
+export const ModifyOrderZodSchema = z.object(ModifyOrderZodShape);
+
+export const SearchContractsZodSchema = z.object(SearchContractsZodShape);
+
+export const GetContractDetailsZodSchema = z.object(GetContractDetailsZodShape);
+
+export const GetPnLZodSchema = z.object(GetPnLZodShape);
+
+export const GetTradesHistoryZodSchema = z.object(GetTradesHistoryZodShape);
+
 // ── TypeScript types (inferred from Zod schemas) ────────────────────────────
 export type AuthenticateInput = z.infer<typeof AuthenticateZodSchema>;
 export type GetAccountInfoInput = z.infer<typeof GetAccountInfoZodSchema>;
@@ -175,3 +225,9 @@ export type PlaceOptionOrderInput = z.infer<typeof PlaceOptionOrderZodSchema>;
 export type GetOrderStatusInput = z.infer<typeof GetOrderStatusZodSchema>;
 export type GetLiveOrdersInput = z.infer<typeof GetLiveOrdersZodSchema>;
 export type ConfirmOrderInput = z.infer<typeof ConfirmOrderZodSchema>;
+export type CancelOrderInput = z.infer<typeof CancelOrderZodSchema>;
+export type ModifyOrderInput = z.infer<typeof ModifyOrderZodSchema>;
+export type SearchContractsInput = z.infer<typeof SearchContractsZodSchema>;
+export type GetContractDetailsInput = z.infer<typeof GetContractDetailsZodSchema>;
+export type GetPnLInput = z.infer<typeof GetPnLZodSchema>;
+export type GetTradesHistoryInput = z.infer<typeof GetTradesHistoryZodSchema>;

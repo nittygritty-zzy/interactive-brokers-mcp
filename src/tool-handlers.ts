@@ -18,6 +18,12 @@ import {
   GetOrderStatusInput,
   GetLiveOrdersInput,
   ConfirmOrderInput,
+  CancelOrderInput,
+  ModifyOrderInput,
+  SearchContractsInput,
+  GetContractDetailsInput,
+  GetPnLInput,
+  GetTradesHistoryInput,
 } from "./tool-definitions.js";
 
 export interface ToolHandlerContext {
@@ -731,6 +737,211 @@ export class ToolHandlers {
           {
             type: "text",
             text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: this.formatError(error),
+          },
+        ],
+      };
+    }
+  }
+
+  // ── Phase 4: Order Management Enhancement ────────────────────────────────
+
+  async cancelOrder(input: CancelOrderInput): Promise<ToolHandlerResult> {
+    try {
+      // Ensure Gateway is ready
+      await this.ensureGatewayReady();
+
+      // Ensure authentication in headless mode
+      if (this.context.config.IB_HEADLESS_MODE) {
+        await this.ensureAuth();
+      }
+
+      const result = await this.context.ibClient.cancelOrder(input.orderId, input.accountId);
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Order ${input.orderId} cancelled successfully.\n\n${JSON.stringify(result, null, 2)}`,
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: this.formatError(error),
+          },
+        ],
+      };
+    }
+  }
+
+  async modifyOrder(input: ModifyOrderInput): Promise<ToolHandlerResult> {
+    try {
+      // Ensure Gateway is ready
+      await this.ensureGatewayReady();
+
+      // Ensure authentication in headless mode
+      if (this.context.config.IB_HEADLESS_MODE) {
+        await this.ensureAuth();
+      }
+
+      const modifications = {
+        quantity: input.quantity,
+        price: input.price,
+        stopPrice: input.stopPrice
+      };
+
+      const result = await this.context.ibClient.modifyOrder(input.orderId, input.accountId, modifications);
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Order ${input.orderId} modified successfully.\n\n${JSON.stringify(result, null, 2)}`,
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: this.formatError(error),
+          },
+        ],
+      };
+    }
+  }
+
+  // ── Phase 5: Contract Search & Discovery ──────────────────────────────────
+
+  async searchContracts(input: SearchContractsInput): Promise<ToolHandlerResult> {
+    try {
+      // Ensure Gateway is ready
+      await this.ensureGatewayReady();
+
+      // Ensure authentication in headless mode
+      if (this.context.config.IB_HEADLESS_MODE) {
+        await this.ensureAuth();
+      }
+
+      const results = await this.context.ibClient.searchContracts(
+        input.query,
+        input.secType,
+        input.exchange,
+        input.currency,
+        input.limit
+      );
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Found ${results.length} contracts matching "${input.query}":\n\n${JSON.stringify(results, null, 2)}`,
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: this.formatError(error),
+          },
+        ],
+      };
+    }
+  }
+
+  async getContractDetails(input: GetContractDetailsInput): Promise<ToolHandlerResult> {
+    try {
+      // Ensure Gateway is ready
+      await this.ensureGatewayReady();
+
+      // Ensure authentication in headless mode
+      if (this.context.config.IB_HEADLESS_MODE) {
+        await this.ensureAuth();
+      }
+
+      const details = await this.context.ibClient.getContractDetails(input.conid);
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(details, null, 2),
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: this.formatError(error),
+          },
+        ],
+      };
+    }
+  }
+
+  // ── Phase 6: P&L and Trading History ──────────────────────────────────────
+
+  async getPnL(input: GetPnLInput): Promise<ToolHandlerResult> {
+    try {
+      // Ensure Gateway is ready
+      await this.ensureGatewayReady();
+
+      // Ensure authentication in headless mode
+      if (this.context.config.IB_HEADLESS_MODE) {
+        await this.ensureAuth();
+      }
+
+      const pnlData = await this.context.ibClient.getPnL(input.accountId);
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(pnlData, null, 2),
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: this.formatError(error),
+          },
+        ],
+      };
+    }
+  }
+
+  async getTradesHistory(input: GetTradesHistoryInput): Promise<ToolHandlerResult> {
+    try {
+      // Ensure Gateway is ready
+      await this.ensureGatewayReady();
+
+      // Ensure authentication in headless mode
+      if (this.context.config.IB_HEADLESS_MODE) {
+        await this.ensureAuth();
+      }
+
+      const trades = await this.context.ibClient.getTradesHistory(input.accountId, input.days);
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Found ${trades.length} trades:\n\n${JSON.stringify(trades, null, 2)}`,
           },
         ],
       };

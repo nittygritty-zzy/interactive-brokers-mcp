@@ -989,15 +989,253 @@ export class IBClient {
       return response.data;
     } catch (error) {
       Logger.error("Failed to get orders:", error);
-      
+
       // Check if this is likely an authentication error
       if (this.isAuthenticationError(error)) {
         const authError = new Error("Authentication required to retrieve orders. Please authenticate with Interactive Brokers first.");
         (authError as any).isAuthError = true;
         throw authError;
       }
-      
+
       throw new Error("Failed to retrieve orders");
+    }
+  }
+
+  /**
+   * Cancel an order
+   * @param orderId - Order ID to cancel
+   * @param accountId - Account ID
+   */
+  async cancelOrder(orderId: string, accountId: string): Promise<any> {
+    try {
+      Logger.log(`[CANCEL ORDER] Cancelling order ${orderId} for account ${accountId}`);
+
+      const url = `/iserver/account/${accountId}/order/${orderId}`;
+      const response = await this.client.delete(url);
+
+      Logger.log(`[CANCEL ORDER] Order ${orderId} cancelled successfully`);
+      return response.data;
+    } catch (error) {
+      Logger.error(`Failed to cancel order ${orderId}:`, error);
+
+      if (this.isAuthenticationError(error)) {
+        const authError = new Error("Authentication required to cancel order. Please authenticate with Interactive Brokers first.");
+        (authError as any).isAuthError = true;
+        throw authError;
+      }
+
+      throw new Error(`Failed to cancel order ${orderId}`);
+    }
+  }
+
+  /**
+   * Modify an existing order
+   * @param orderId - Order ID to modify
+   * @param accountId - Account ID
+   * @param modifications - Order modifications (quantity, price, stopPrice)
+   */
+  async modifyOrder(orderId: string, accountId: string, modifications: {
+    quantity?: number;
+    price?: number;
+    stopPrice?: number;
+  }): Promise<any> {
+    try {
+      Logger.log(`[MODIFY ORDER] Modifying order ${orderId} for account ${accountId}`);
+
+      const url = `/iserver/account/${accountId}/order/${orderId}`;
+
+      // Build modification payload
+      const payload: any = {};
+      if (modifications.quantity !== undefined) {
+        payload.quantity = modifications.quantity;
+      }
+      if (modifications.price !== undefined) {
+        payload.price = modifications.price;
+      }
+      if (modifications.stopPrice !== undefined) {
+        payload.auxPrice = modifications.stopPrice;
+      }
+
+      const response = await this.client.post(url, payload);
+
+      Logger.log(`[MODIFY ORDER] Order ${orderId} modified successfully`);
+      return response.data;
+    } catch (error) {
+      Logger.error(`Failed to modify order ${orderId}:`, error);
+
+      if (this.isAuthenticationError(error)) {
+        const authError = new Error("Authentication required to modify order. Please authenticate with Interactive Brokers first.");
+        (authError as any).isAuthError = true;
+        throw authError;
+      }
+
+      throw new Error(`Failed to modify order ${orderId}`);
+    }
+  }
+
+  /**
+   * Search for contracts by symbol or criteria
+   * @param query - Search query (symbol or name)
+   * @param secType - Security type (STK, OPT, FUT, CASH, BOND)
+   * @param exchange - Optional exchange filter
+   * @param currency - Optional currency filter
+   * @param limit - Maximum results to return
+   */
+  async searchContracts(query: string, secType?: string, exchange?: string, currency?: string, limit: number = 10): Promise<any> {
+    try {
+      Logger.log(`[SEARCH] Searching for contracts: ${query}`);
+
+      let url = `/iserver/secdef/search?symbol=${encodeURIComponent(query)}`;
+      if (secType) {
+        url += `&secType=${secType}`;
+      }
+      if (exchange) {
+        url += `&exchange=${exchange}`;
+      }
+
+      const response = await this.client.get(url);
+      let results = response.data || [];
+
+      // Filter by currency if specified
+      if (currency) {
+        results = results.filter((contract: any) => contract.currency === currency);
+      }
+
+      // Limit results
+      results = results.slice(0, limit);
+
+      Logger.log(`[SEARCH] Found ${results.length} contracts`);
+      return results;
+    } catch (error) {
+      Logger.error(`Failed to search contracts for ${query}:`, error);
+
+      if (this.isAuthenticationError(error)) {
+        const authError = new Error("Authentication required to search contracts. Please authenticate with Interactive Brokers first.");
+        (authError as any).isAuthError = true;
+        throw authError;
+      }
+
+      throw new Error(`Failed to search contracts for ${query}`);
+    }
+  }
+
+  /**
+   * Get detailed contract information
+   * @param conid - Contract ID
+   */
+  async getContractDetails(conid: number): Promise<any> {
+    try {
+      Logger.log(`[CONTRACT DETAILS] Fetching details for contract ${conid}`);
+
+      const url = `/iserver/secdef/info?conid=${conid}`;
+      const response = await this.client.get(url);
+
+      Logger.log(`[CONTRACT DETAILS] Retrieved details for contract ${conid}`);
+      return response.data;
+    } catch (error) {
+      Logger.error(`Failed to get contract details for ${conid}:`, error);
+
+      if (this.isAuthenticationError(error)) {
+        const authError = new Error("Authentication required to get contract details. Please authenticate with Interactive Brokers first.");
+        (authError as any).isAuthError = true;
+        throw authError;
+      }
+
+      throw new Error(`Failed to get contract details for ${conid}`);
+    }
+  }
+
+  /**
+   * Get profit and loss information
+   * @param accountId - Optional account ID filter
+   */
+  async getPnL(accountId?: string): Promise<any> {
+    try {
+      Logger.log(`[P&L] Fetching P&L data${accountId ? ` for account ${accountId}` : ''}`);
+
+      // Get account summary which includes P&L data
+      let url = accountId ? `/portfolio/${accountId}/summary` : `/portfolio/accounts`;
+      const response = await this.client.get(url);
+
+      if (accountId) {
+        // Single account P&L
+        return {
+          accountId,
+          pnl: response.data
+        };
+      } else {
+        // Get P&L for all accounts
+        const accounts = response.data;
+        const pnlData = [];
+
+        for (const account of accounts) {
+          const summaryResponse = await this.client.get(`/portfolio/${account.accountId}/summary`);
+          pnlData.push({
+            accountId: account.accountId,
+            pnl: summaryResponse.data
+          });
+        }
+
+        return pnlData;
+      }
+    } catch (error) {
+      Logger.error("Failed to get P&L data:", error);
+
+      if (this.isAuthenticationError(error)) {
+        const authError = new Error("Authentication required to retrieve P&L. Please authenticate with Interactive Brokers first.");
+        (authError as any).isAuthError = true;
+        throw authError;
+      }
+
+      throw new Error("Failed to retrieve P&L data");
+    }
+  }
+
+  /**
+   * Get trades history
+   * @param accountId - Optional account ID filter
+   * @param days - Number of days to look back (default: 7)
+   */
+  async getTradesHistory(accountId?: string, days: number = 7): Promise<any> {
+    try {
+      Logger.log(`[TRADES HISTORY] Fetching trades for last ${days} days${accountId ? ` for account ${accountId}` : ''}`);
+
+      // IBKR uses /iserver/account/trades endpoint
+      // Note: The exact endpoint may vary based on IBKR API version
+      let url = `/iserver/account/trades`;
+      if (accountId) {
+        url = `/iserver/account/${accountId}/trades`;
+      }
+
+      const response = await this.client.get(url);
+      let trades = response.data || [];
+
+      // Filter by date if needed (trades within last N days)
+      if (days) {
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - days);
+
+        trades = trades.filter((trade: any) => {
+          if (trade.execution_time || trade.time) {
+            const tradeDate = new Date(trade.execution_time || trade.time);
+            return tradeDate >= cutoffDate;
+          }
+          return true; // Keep if no date available
+        });
+      }
+
+      Logger.log(`[TRADES HISTORY] Found ${trades.length} trades`);
+      return trades;
+    } catch (error) {
+      Logger.error("Failed to get trades history:", error);
+
+      if (this.isAuthenticationError(error)) {
+        const authError = new Error("Authentication required to retrieve trades history. Please authenticate with Interactive Brokers first.");
+        (authError as any).isAuthError = true;
+        throw authError;
+      }
+
+      throw new Error("Failed to retrieve trades history");
     }
   }
 }

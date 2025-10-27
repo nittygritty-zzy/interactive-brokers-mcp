@@ -30,6 +30,12 @@ describe('ToolHandlers', () => {
       getOrderStatus: vi.fn().mockResolvedValue({ status: 'Filled' }),
       getOrders: vi.fn().mockResolvedValue([]),
       confirmOrder: vi.fn().mockResolvedValue({ confirmed: true }),
+      cancelOrder: vi.fn().mockResolvedValue({ msg: 'Order cancelled' }),
+      modifyOrder: vi.fn().mockResolvedValue({ msg: 'Order modified' }),
+      searchContracts: vi.fn().mockResolvedValue([]),
+      getContractDetails: vi.fn().mockResolvedValue({}),
+      getPnL: vi.fn().mockResolvedValue({}),
+      getTradesHistory: vi.fn().mockResolvedValue([]),
       destroy: vi.fn(),
       updatePort: vi.fn(),
     } as any;
@@ -359,6 +365,157 @@ describe('ToolHandlers', () => {
 
       expect(result.content).toBeDefined();
       expect(result.content[0].text).toContain('String error');
+    });
+  });
+
+  describe('Phase 4: Order Management', () => {
+    describe('cancelOrder', () => {
+      it('should cancel order successfully', async () => {
+        const mockResponse = { msg: 'Order cancelled successfully' };
+        mockIBClient.cancelOrder = vi.fn().mockResolvedValue(mockResponse);
+
+        const result = await handlers.cancelOrder({ orderId: '123', accountId: 'U12345' });
+
+        expect(result.content).toBeDefined();
+        expect(mockIBClient.cancelOrder).toHaveBeenCalledWith('123', 'U12345');
+        expect(result.content[0].text).toContain('cancelled successfully');
+      });
+
+      it('should handle cancel order errors', async () => {
+        mockIBClient.cancelOrder = vi.fn().mockRejectedValue(new Error('Cancel failed'));
+
+        const result = await handlers.cancelOrder({ orderId: '123', accountId: 'U12345' });
+
+        expect(result.content[0].text).toContain('Cancel failed');
+      });
+    });
+
+    describe('modifyOrder', () => {
+      it('should modify order successfully', async () => {
+        const mockResponse = { msg: 'Order modified successfully' };
+        mockIBClient.modifyOrder = vi.fn().mockResolvedValue(mockResponse);
+
+        const result = await handlers.modifyOrder({
+          orderId: '123',
+          accountId: 'U12345',
+          quantity: 20,
+          price: 155.50
+        });
+
+        expect(result.content).toBeDefined();
+        expect(mockIBClient.modifyOrder).toHaveBeenCalledWith('123', 'U12345', {
+          quantity: 20,
+          price: 155.50,
+          stopPrice: undefined
+        });
+        expect(result.content[0].text).toContain('modified successfully');
+      });
+
+      it('should handle modify order errors', async () => {
+        mockIBClient.modifyOrder = vi.fn().mockRejectedValue(new Error('Modify failed'));
+
+        const result = await handlers.modifyOrder({ orderId: '123', accountId: 'U12345' });
+
+        expect(result.content[0].text).toContain('Modify failed');
+      });
+    });
+  });
+
+  describe('Phase 5: Contract Search', () => {
+    describe('searchContracts', () => {
+      it('should search contracts successfully', async () => {
+        const mockResults = [
+          { conid: 265598, symbol: 'AAPL', secType: 'STK' },
+          { conid: 12345, symbol: 'AAPL', secType: 'OPT' }
+        ];
+        mockIBClient.searchContracts = vi.fn().mockResolvedValue(mockResults);
+
+        const result = await handlers.searchContracts({ query: 'AAPL' });
+
+        expect(result.content).toBeDefined();
+        expect(mockIBClient.searchContracts).toHaveBeenCalledWith('AAPL', undefined, undefined, undefined, undefined);
+        expect(result.content[0].text).toContain('Found 2 contracts');
+      });
+
+      it('should search with filters', async () => {
+        mockIBClient.searchContracts = vi.fn().mockResolvedValue([]);
+
+        await handlers.searchContracts({
+          query: 'AAPL',
+          secType: 'STK',
+          exchange: 'NASDAQ',
+          currency: 'USD',
+          limit: 5
+        });
+
+        expect(mockIBClient.searchContracts).toHaveBeenCalledWith('AAPL', 'STK', 'NASDAQ', 'USD', 5);
+      });
+    });
+
+    describe('getContractDetails', () => {
+      it('should get contract details', async () => {
+        const mockDetails = {
+          conid: 265598,
+          symbol: 'AAPL',
+          name: 'Apple Inc.',
+          secType: 'STK'
+        };
+        mockIBClient.getContractDetails = vi.fn().mockResolvedValue(mockDetails);
+
+        const result = await handlers.getContractDetails({ conid: 265598 });
+
+        expect(result.content).toBeDefined();
+        expect(mockIBClient.getContractDetails).toHaveBeenCalledWith(265598);
+      });
+    });
+  });
+
+  describe('Phase 6: P&L and Trading History', () => {
+    describe('getPnL', () => {
+      it('should get P&L data', async () => {
+        const mockPnL = {
+          accountId: 'U12345',
+          pnl: { totalPnL: 1000, dailyPnL: 50 }
+        };
+        mockIBClient.getPnL = vi.fn().mockResolvedValue(mockPnL);
+
+        const result = await handlers.getPnL({ accountId: 'U12345' });
+
+        expect(result.content).toBeDefined();
+        expect(mockIBClient.getPnL).toHaveBeenCalledWith('U12345');
+      });
+
+      it('should get P&L for all accounts', async () => {
+        mockIBClient.getPnL = vi.fn().mockResolvedValue([]);
+
+        await handlers.getPnL({});
+
+        expect(mockIBClient.getPnL).toHaveBeenCalledWith(undefined);
+      });
+    });
+
+    describe('getTradesHistory', () => {
+      it('should get trades history', async () => {
+        const mockTrades = [
+          { symbol: 'AAPL', quantity: 10, price: 150 },
+          { symbol: 'TSLA', quantity: 5, price: 250 }
+        ];
+        mockIBClient.getTradesHistory = vi.fn().mockResolvedValue(mockTrades);
+
+        const result = await handlers.getTradesHistory({ days: 30 });
+
+        expect(result.content).toBeDefined();
+        expect(mockIBClient.getTradesHistory).toHaveBeenCalledWith(undefined, 30);
+        expect(result.content[0].text).toContain('Found 2 trades');
+      });
+
+      it('should use default days parameter', async () => {
+        mockIBClient.getTradesHistory = vi.fn().mockResolvedValue([]);
+
+        await handlers.getTradesHistory({});
+
+        expect(mockIBClient.getTradesHistory).toHaveBeenCalledWith(undefined, undefined);
+      });
     });
   });
 });
