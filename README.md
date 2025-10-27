@@ -87,15 +87,21 @@ You only need:
 
 ## Quick Start
 
-### Option 1: Install via Claude Code (Easiest)
+### Option 1: Install via Claude Code CLI (Easiest)
 
-If you're using Claude Code, simply run this command:
+If you're using Claude Code, run this command in your terminal:
 
+```bash
+claude mcp add --transport stdio interactive-brokers -- npx -y github:nittygritty-zzy/interactive-brokers-mcp
 ```
-/mcp-install github:nittygritty-zzy/interactive-brokers-mcp
+
+This will automatically add the MCP server to your Claude Code configuration. You can verify the installation with:
+
+```bash
+claude mcp list
 ```
 
-Claude Code will automatically add the MCP server to your configuration.
+To check server status in Claude Code, use the `/mcp` slash command.
 
 ### Option 2: Install from GitHub (Manual Configuration)
 
@@ -155,8 +161,19 @@ credentials to authorize the connection.
 ## Headless Mode Configuration
 
 For automated environments or when you prefer not to use a browser for
-authentication, you can enable headless mode by configuring it in your MCP
-server configuration:
+authentication, you can enable headless mode:
+
+### Using Claude Code CLI
+
+```bash
+claude mcp add --transport stdio interactive-brokers \
+  --env IB_HEADLESS_MODE=true \
+  --env IB_USERNAME=your_ib_username \
+  --env IB_PASSWORD_AUTH=your_ib_password \
+  -- npx -y github:nittygritty-zzy/interactive-brokers-mcp
+```
+
+### Using Manual Configuration (Claude Desktop/Cursor)
 
 ```json
 {
@@ -172,7 +189,6 @@ server configuration:
     }
   }
 }
-
 ```
 
 In headless mode, the server will automatically authenticate using your
@@ -188,7 +204,22 @@ two-factor authentication (2FA). When 2FA is triggered, the headless
 authentication will wait for you to complete the 2FA process through your
 configured method (mobile app, SMS, etc.) before proceeding.
 
-To enable paper trading, add `"IB_PAPER_TRADING": "true"` to your environment variables:
+### Paper Trading Mode
+
+To enable paper trading (recommended for testing):
+
+**Using Claude Code CLI:**
+
+```bash
+claude mcp add --transport stdio interactive-brokers \
+  --env IB_HEADLESS_MODE=true \
+  --env IB_USERNAME=your_ib_username \
+  --env IB_PASSWORD_AUTH=your_ib_password \
+  --env IB_PAPER_TRADING=true \
+  -- npx -y github:nittygritty-zzy/interactive-brokers-mcp
+```
+
+**Using Manual Configuration:**
 
 ```json
 {
