@@ -87,9 +87,21 @@ You only need:
 
 ## Quick Start
 
-### Option 1: Install from GitHub (Recommended - Latest Features)
+### Option 1: Install via Claude Code (Easiest)
 
-Add this MCP server to your Cursor/Claude configuration:
+If you're using Claude Code, simply run this command:
+
+```
+/mcp-install github:nittygritty-zzy/interactive-brokers-mcp
+```
+
+Claude Code will automatically add the MCP server to your configuration.
+
+### Option 2: Install from GitHub (Manual Configuration)
+
+Add this MCP server to your Cursor/Claude configuration file:
+
+**For Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
 
 ```json
 {
@@ -105,7 +117,23 @@ Add this MCP server to your Cursor/Claude configuration:
 }
 ```
 
-### Option 2: Install from npm
+**For Cursor** (`.cursor/config.json` or Settings → MCP):
+
+```json
+{
+  "mcpServers": {
+    "interactive-brokers": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "github:nittygritty-zzy/interactive-brokers-mcp"
+      ]
+    }
+  }
+}
+```
+
+### Option 3: Install from npm
 
 ```json
 {
@@ -117,6 +145,8 @@ Add this MCP server to your Cursor/Claude configuration:
   }
 }
 ```
+
+### First Time Setup
 
 When you first use the server, a web browser window will automatically open for
 the Interactive Brokers OAuth authentication flow. Log in with your IB
