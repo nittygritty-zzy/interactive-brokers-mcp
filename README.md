@@ -17,7 +17,10 @@ your IB account to retrieve market data, check positions, and place trades.
 
 ## Features
 
-- **Interactive Brokers API Integration**: Full trading capabilities including account management, position tracking, real-time market data, and order management (market, limit, and stop orders)
+- **Interactive Brokers API Integration**: Full trading capabilities including account management, position tracking, real-time and historical market data, options chain analysis, and order management (market, limit, and stop orders)
+- **Comprehensive Market Data**: Real-time quotes with flexible field selection (basic, detailed, options Greeks, fundamentals), historical OHLCV data, and quick quote access
+- **Advanced Options Support**: Complete options chain retrieval, option contract search by criteria, and options trading with Greeks
+- **Portfolio Management**: Aggregated portfolio summaries with P&L tracking and grouping by security type
 - **Flexible Authentication**: Choose between browser-based OAuth authentication or headless mode with credentials for automated environments
 - **Simple Setup**: Run directly with `npx` - no Docker or additional installations required. Includes pre-configured IB Gateway and Java runtime for all platforms
 
@@ -137,15 +140,38 @@ management systems.
 
 ## Available MCP Tools
 
+### Market Data Tools
+
+| Tool                    | Description                                                     |
+| ----------------------- | --------------------------------------------------------------- |
+| `get_market_data`       | Real-time market data with flexible field selection (basic, detailed, options, fundamentals, all) |
+| `get_historical_data`   | Historical OHLCV price data with flexible time periods and bar sizes |
+| `get_quote`             | Quick quote with last, bid, ask, volume, and change             |
+
+### Options Tools
+
+| Tool                    | Description                                                     |
+| ----------------------- | --------------------------------------------------------------- |
+| `get_options_chain`     | Complete options chain with strikes and expirations             |
+| `find_option_contract`  | Find specific option contract by criteria (strike, expiration, right) |
+| `place_option_order`    | Place option orders with strike, expiration, and right          |
+
+### Account & Portfolio Tools
+
+| Tool                    | Description                                                     |
+| ----------------------- | --------------------------------------------------------------- |
+| `get_account_info`      | Retrieve account information and balances                       |
+| `get_positions`         | Get current positions and P&L                                   |
+| `get_portfolio_summary` | Aggregated portfolio summary with positions and P&L by security type |
+
+### Trading & Order Management
+
 | Tool                  | Description                                               |
 | --------------------- | --------------------------------------------------------- |
-| `get_account_info`    | Retrieve account information and balances                 |
-| `get_positions`       | Get current positions and P&L                             |
-| `get_market_data`     | Real-time market data for symbols                         |
 | `place_stock_order`   | Place stock orders (market, limit, or stop)               |
-| `place_option_order`  | Place option orders with strike, expiration, and right    |
 | `get_order_status`    | Check order execution status (stocks and options)         |
-| `get_live_orders`     | Get all live/open orders for monitoring                   |
+| `get_live_orders`     | Get all live/open orders for monitoring and validation    |
+| `confirm_order`       | Manually confirm orders that require confirmation         |
 
 ### Stock Orders
 
@@ -183,6 +209,131 @@ Example:
   "action": "BUY",
   "orderType": "MKT",
   "quantity": 1
+}
+```
+
+### Market Data
+
+Get real-time market data with flexible field selection using `get_market_data`:
+
+```json
+// Basic quote
+{
+  "symbol": "AAPL",
+  "fields": "basic"
+}
+
+// Detailed market data
+{
+  "symbol": "AAPL",
+  "fields": "detailed"
+}
+
+// Options with Greeks
+{
+  "symbol": "SPY",
+  "fields": "options"
+}
+
+// Custom fields
+{
+  "symbol": "AAPL",
+  "fields": ["31", "84", "86", "87", "88"]
+}
+```
+
+Get historical OHLCV data using `get_historical_data`:
+
+```json
+// 1-day with 5-minute bars
+{
+  "symbol": "AAPL",
+  "period": "1d",
+  "bar": "5min"
+}
+
+// 1-week with 1-hour bars
+{
+  "symbol": "SPY",
+  "period": "1w",
+  "bar": "1h"
+}
+
+// Include extended hours
+{
+  "symbol": "AAPL",
+  "period": "1d",
+  "bar": "1min",
+  "outsideRth": true
+}
+```
+
+Get quick quote using `get_quote`:
+
+```json
+{
+  "symbol": "AAPL"
+}
+```
+
+### Options Data
+
+Get complete options chain using `get_options_chain`:
+
+```json
+// Full chain
+{
+  "symbol": "SPY"
+}
+
+// With Greeks
+{
+  "symbol": "AAPL",
+  "includeGreeks": true
+}
+
+// Limited strikes and expirations
+{
+  "symbol": "SPY",
+  "strikeCount": 10,
+  "expirationCount": 3
+}
+```
+
+Find specific option contract using `find_option_contract`:
+
+```json
+// ATM call for nearest expiration
+{
+  "symbol": "AAPL",
+  "right": "C"
+}
+
+// Specific strike and expiration
+{
+  "symbol": "SPY",
+  "expiration": "JAN25",
+  "strike": 450,
+  "right": "P"
+}
+```
+
+### Portfolio Summary
+
+Get aggregated portfolio summary using `get_portfolio_summary`:
+
+```json
+// All accounts
+{}
+
+// Specific account
+{
+  "accountId": "U12345"
+}
+
+// Grouped by security type
+{
+  "groupBy": "secType"
 }
 ```
 

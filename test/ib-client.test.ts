@@ -160,14 +160,19 @@ describe('IBClient', () => {
         mockClient.get.mockResolvedValueOnce({
           data: [{ conid: 265598, symbol: 'AAPL' }],
         });
-        
-        // Mock market data response
+
+        // Mock preflight snapshot request
         mockClient.get.mockResolvedValueOnce({
-          data: [{ conid: 265598, price: 150.25 }],
+          data: {},
         });
-        
+
+        // Mock actual data snapshot request
+        mockClient.get.mockResolvedValueOnce({
+          data: [{ "31": 150.25, "84": 150.20, "86": 150.30 }],
+        });
+
         const result = await client.getMarketData('AAPL');
-        
+
         expect(mockClient.get).toHaveBeenCalledWith(
           expect.stringContaining('/iserver/secdef/search?symbol=AAPL')
         );

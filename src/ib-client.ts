@@ -41,6 +41,15 @@ const isError = (error: unknown): error is Error => {
   return error instanceof Error;
 };
 
+// Market data field presets
+const FIELD_PRESETS = {
+  basic: "31,84,86,87,88,55", // Last, Bid, Ask, Volume, Bid Size, Symbol
+  detailed: "31,84,86,87,88,70,71,82,83,55,7051,7059", // + High, Low, Change, Company Name, Last Size
+  options: "31,84,86,87,88,7633,7294,7295,7296", // + Implied Vol, Delta, Gamma, Theta
+  fundamentals: "7280,7281,7282,7283,7284,7286,7287,7288,7290,7291", // Industry, Category, etc.
+  all: "31,55,58,70,71,72,73,74,75,76,77,78,82,83,84,85,86,87,88,6004,6008,6070,6072,6073,6119,6457,6509,7051,7059,7094,7219,7220,7221,7280,7281,7282,7283,7284,7285,7286,7287,7288,7289,7290,7291,7292,7293,7294,7295,7296,7633"
+};
+
 export class IBClient {
   private client!: AxiosInstance;
   private baseUrl!: string;
@@ -337,41 +346,348 @@ export class IBClient {
     }
   }
 
-  async getMarketData(symbol: string, exchange?: string): Promise<any> {
+  async getMarketData(symbol: string, exchange?: string, fields?: string[] | string, conid?: number): Promise<any> {
     try {
-      // First, get the contract ID for the symbol
-      const searchResponse = await this.client.get(
-        `/iserver/secdef/search?symbol=${symbol}`
-      );
-      
-      if (!searchResponse.data || searchResponse.data.length === 0) {
-        throw new Error(`Symbol ${symbol} not found`);
+      let contractId = conid;
+
+      // If conid not provided, search for contract
+      if (!contractId) {
+        const searchResponse = await this.client.get(
+          `/iserver/secdef/search?symbol=${symbol}`
+        );
+
+        if (!searchResponse.data || searchResponse.data.length === 0) {
+          throw new Error(`Symbol ${symbol} not found`);
+        }
+
+        const contract = searchResponse.data[0];
+        contractId = contract.conid;
       }
 
-      const contract = searchResponse.data[0];
-      const conid = contract.conid;
+      // Determine fields to use
+      let fieldStr: string;
+      if (!fields) {
+        fieldStr = FIELD_PRESETS.detailed; // Default to detailed
+      } else if (typeof fields === 'string') {
+        // It's a preset name
+        fieldStr = FIELD_PRESETS[fields as keyof typeof FIELD_PRESETS] || FIELD_PRESETS.detailed;
+      } else {
+        // It's an array of field codes
+        fieldStr = fields.join(',');
+      }
 
-      // Get market data snapshot
+      Logger.log(`Getting market data for conid ${contractId} with fields: ${fieldStr}`);
+
+      // Get market data snapshot (first call is preflight)
       const response = await this.client.get(
-        `/iserver/marketdata/snapshot?conids=${conid}&fields=31,84,86,87,88,85,70,71,72,73,74,75,76,77,78`
+        `/iserver/marketdata/snapshot?conids=${contractId}&fields=${fieldStr}`
+      );
+
+      // Second call to get actual data (first call initializes stream)
+      const dataResponse = await this.client.get(
+        `/iserver/marketdata/snapshot?conids=${contractId}&fields=${fieldStr}`
       );
 
       return {
         symbol: symbol,
-        contract: contract,
-        marketData: response.data
+        conid: contractId,
+        marketData: dataResponse.data
       };
     } catch (error) {
       Logger.error("Failed to get market data:", error);
-      
+
       // Check if this is likely an authentication error
       if (this.isAuthenticationError(error)) {
         const authError = new Error(`Authentication required to retrieve market data for ${symbol}. Please authenticate with Interactive Brokers first.`);
         (authError as any).isAuthError = true;
         throw authError;
       }
-      
+
       throw new Error(`Failed to retrieve market data for ${symbol}`);
+    }
+  }
+
+  async getHistoricalData(symbol: string, conid?: number, period?: string, bar?: string, outsideRth?: boolean): Promise<any> {
+    try {
+      let contractId = conid;
+
+      // If conid not provided, search for contract
+      if (!contractId) {
+        const searchResponse = await this.client.get(
+          `/iserver/secdef/search?symbol=${symbol}`
+        );
+
+        if (!searchResponse.data || searchResponse.data.length === 0) {
+          throw new Error(`Symbol ${symbol} not found`);
+        }
+
+        const contract = searchResponse.data[0];
+        contractId = contract.conid;
+      }
+
+      // Build query parameters
+      const params = new URLSearchParams();
+      params.append('conid', contractId!.toString());
+      if (period) params.append('period', period);
+      if (bar) params.append('bar', bar);
+      if (outsideRth !== undefined) params.append('outsideRth', outsideRth.toString());
+
+      Logger.log(`Getting historical data for ${symbol} (conid: ${contractId})`);
+
+      const response = await this.client.get(`/iserver/marketdata/history?${params.toString()}`);
+
+      return {
+        symbol: symbol,
+        conid: contractId,
+        period: period || response.data.period,
+        bar: bar || response.data.barLength,
+        data: response.data
+      };
+    } catch (error) {
+      Logger.error("Failed to get historical data:", error);
+
+      if (this.isAuthenticationError(error)) {
+        const authError = new Error(`Authentication required to retrieve historical data for ${symbol}. Please authenticate with Interactive Brokers first.`);
+        (authError as any).isAuthError = true;
+        throw authError;
+      }
+
+      throw new Error(`Failed to retrieve historical data for ${symbol}`);
+    }
+  }
+
+  async getOptionsChain(symbol: string, conid?: number, includeGreeks: boolean = true): Promise<any> {
+    try {
+      let underlyingConid = conid;
+
+      // If conid not provided, search for underlying
+      if (!underlyingConid) {
+        const searchResponse = await this.client.get(
+          `/iserver/secdef/search?symbol=${symbol}&secType=STK`
+        );
+
+        if (!searchResponse.data || searchResponse.data.length === 0) {
+          throw new Error(`Underlying symbol ${symbol} not found`);
+        }
+
+        const contract = searchResponse.data.find((c: any) => c.assetClass === 'STK' || c.secType === 'STK')
+                        || searchResponse.data[0];
+        underlyingConid = contract.conid;
+      }
+
+      Logger.log(`Getting options chain for ${symbol} (conid: ${underlyingConid})`);
+
+      // Get security definition to find available months
+      const secdefResponse = await this.client.get(
+        `/iserver/secdef/search?symbol=${symbol}&secType=OPT`
+      );
+
+      if (!secdefResponse.data || secdefResponse.data.length === 0) {
+        throw new Error(`No options found for ${symbol}`);
+      }
+
+      // Extract unique expiration months from the search results
+      const months = new Set<string>();
+      secdefResponse.data.forEach((opt: any) => {
+        if (opt.months) {
+          opt.months.split(';').forEach((m: string) => months.add(m));
+        }
+      });
+
+      const monthsArray = Array.from(months).slice(0, 4); // Get first 4 expirations
+
+      Logger.log(`Found expiration months: ${monthsArray.join(', ')}`);
+
+      // For each month, get strikes
+      const expirations = [];
+      for (const month of monthsArray) {
+        try {
+          const strikesResponse = await this.client.get(
+            `/iserver/secdef/strikes?conid=${underlyingConid}&secType=OPT&month=${month}`
+          );
+
+          if (strikesResponse.data) {
+            expirations.push({
+              month: month,
+              callStrikes: strikesResponse.data.call || [],
+              putStrikes: strikesResponse.data.put || []
+            });
+          }
+        } catch (strikeError) {
+          Logger.warn(`Could not get strikes for month ${month}:`, strikeError);
+        }
+      }
+
+      return {
+        symbol: symbol,
+        underlyingConid: underlyingConid,
+        expirations: expirations
+      };
+    } catch (error) {
+      Logger.error("Failed to get options chain:", error);
+
+      if (this.isAuthenticationError(error)) {
+        const authError = new Error(`Authentication required to retrieve options chain for ${symbol}. Please authenticate with Interactive Brokers first.`);
+        (authError as any).isAuthError = true;
+        throw authError;
+      }
+
+      throw new Error(`Failed to retrieve options chain for ${symbol}`);
+    }
+  }
+
+  async findOptionContract(symbol: string, expiration?: string, strike?: number | string, right?: string, delta?: number): Promise<any> {
+    try {
+      Logger.log(`Finding option contract for ${symbol}`);
+
+      // Get options chain first
+      const chain = await this.getOptionsChain(symbol);
+
+      if (!chain.expirations || chain.expirations.length === 0) {
+        throw new Error(`No options chain found for ${symbol}`);
+      }
+
+      // If expiration specified, find matching month
+      let targetMonth = chain.expirations[0].month; // Default to nearest
+      if (expiration) {
+        // Try to match expiration
+        const exp = expiration.toUpperCase();
+        const matchedMonth = chain.expirations.find((e: any) =>
+          e.month.includes(exp) || exp.includes(e.month)
+        );
+        if (matchedMonth) {
+          targetMonth = matchedMonth.month;
+        }
+      }
+
+      const expData = chain.expirations.find((e: any) => e.month === targetMonth);
+      if (!expData) {
+        throw new Error(`Expiration ${expiration || 'nearest'} not found`);
+      }
+
+      // Determine right type
+      const isCall = !right || right === 'C' || right === 'CALL';
+      const strikes = isCall ? expData.callStrikes : expData.putStrikes;
+
+      if (!strikes || strikes.length === 0) {
+        throw new Error(`No ${isCall ? 'call' : 'put'} strikes found`);
+      }
+
+      // Find strike
+      let targetStrike: number;
+      if (strike) {
+        if (typeof strike === 'number') {
+          targetStrike = strike;
+        } else {
+          targetStrike = parseFloat(strike);
+        }
+      } else {
+        // Find ATM strike (middle of the range)
+        targetStrike = strikes[Math.floor(strikes.length / 2)];
+      }
+
+      // Find closest strike
+      const closestStrike = strikes.reduce((prev: number, curr: number) =>
+        Math.abs(curr - targetStrike) < Math.abs(prev - targetStrike) ? curr : prev
+      );
+
+      return {
+        symbol: symbol,
+        expiration: targetMonth,
+        strike: closestStrike,
+        right: isCall ? 'C' : 'P',
+        underlyingConid: chain.underlyingConid
+      };
+    } catch (error) {
+      Logger.error("Failed to find option contract:", error);
+
+      if (this.isAuthenticationError(error)) {
+        const authError = new Error(`Authentication required to find option contract for ${symbol}. Please authenticate with Interactive Brokers first.`);
+        (authError as any).isAuthError = true;
+        throw authError;
+      }
+
+      throw new Error(`Failed to find option contract for ${symbol}`);
+    }
+  }
+
+  async getPortfolioSummary(accountId?: string, groupBy?: string): Promise<any> {
+    try {
+      // Get account info first
+      const accountsResponse = await this.client.get('/portfolio/accounts');
+      const accounts = accountsResponse.data;
+
+      if (!accounts || accounts.length === 0) {
+        throw new Error('No accounts found');
+      }
+
+      // Use first account if not specified
+      const targetAccount = accountId || accounts[0].accountId || accounts[0].id;
+
+      Logger.log(`Getting portfolio summary for account ${targetAccount}`);
+
+      // Get positions
+      const positionsResponse = await this.client.get(
+        `/portfolio/${targetAccount}/positions/0`
+      );
+
+      const positions = positionsResponse.data || [];
+
+      // Calculate summary statistics
+      let totalValue = 0;
+      let totalPnL = 0;
+      let dailyPnL = 0;
+      const bySecType: any = {};
+      const topPositions: any[] = [];
+
+      positions.forEach((pos: any) => {
+        const value = pos.mktValue || 0;
+        const unrealizedPnL = pos.unrealizedPnl || 0;
+        const realizedPnL = pos.realizedPnl || 0;
+
+        totalValue += value;
+        totalPnL += unrealizedPnL + realizedPnL;
+
+        // Group by security type
+        const secType = pos.assetClass || pos.secType || 'OTHER';
+        if (!bySecType[secType]) {
+          bySecType[secType] = { count: 0, value: 0 };
+        }
+        bySecType[secType].count++;
+        bySecType[secType].value += value;
+
+        // Track top positions
+        topPositions.push({
+          symbol: pos.contractDesc || pos.ticker || pos.symbol,
+          quantity: pos.position,
+          marketValue: value,
+          unrealizedPnL: unrealizedPnL,
+          pnlPercent: value !== 0 ? (unrealizedPnL / (value - unrealizedPnL)) * 100 : 0
+        });
+      });
+
+      // Sort top positions by value
+      topPositions.sort((a, b) => Math.abs(b.marketValue) - Math.abs(a.marketValue));
+
+      return {
+        accountId: targetAccount,
+        totalValue: totalValue,
+        totalPnL: totalPnL,
+        dailyPnL: dailyPnL,
+        positionCount: positions.length,
+        bySecType: bySecType,
+        topPositions: topPositions.slice(0, 10)
+      };
+    } catch (error) {
+      Logger.error("Failed to get portfolio summary:", error);
+
+      if (this.isAuthenticationError(error)) {
+        const authError = new Error(`Authentication required to retrieve portfolio summary. Please authenticate with Interactive Brokers first.`);
+        (authError as any).isAuthError = true;
+        throw authError;
+      }
+
+      throw new Error("Failed to retrieve portfolio summary");
     }
   }
 

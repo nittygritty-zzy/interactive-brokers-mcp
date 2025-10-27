@@ -8,6 +8,11 @@ import {
   GetAccountInfoInput,
   GetPositionsInput,
   GetMarketDataInput,
+  GetHistoricalDataInput,
+  GetQuoteInput,
+  GetOptionsChainInput,
+  FindOptionContractInput,
+  GetPortfolioSummaryInput,
   PlaceStockOrderInput,
   PlaceOptionOrderInput,
   GetOrderStatusInput,
@@ -348,13 +353,201 @@ export class ToolHandlers {
     try {
       // Ensure Gateway is ready
       await this.ensureGatewayReady();
-      
+
       // Ensure authentication in headless mode
       if (this.context.config.IB_HEADLESS_MODE) {
         await this.ensureAuth();
       }
-      
-      const result = await this.context.ibClient.getMarketData(input.symbol, input.exchange);
+
+      const result = await this.context.ibClient.getMarketData(
+        input.symbol,
+        input.exchange,
+        input.fields,
+        input.conid
+      );
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: this.formatError(error),
+          },
+        ],
+      };
+    }
+  }
+
+  async getHistoricalData(input: GetHistoricalDataInput): Promise<ToolHandlerResult> {
+    try {
+      await this.ensureGatewayReady();
+
+      if (this.context.config.IB_HEADLESS_MODE) {
+        await this.ensureAuth();
+      }
+
+      const result = await this.context.ibClient.getHistoricalData(
+        input.symbol,
+        input.conid,
+        input.period,
+        input.bar,
+        input.outsideRth
+      );
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: this.formatError(error),
+          },
+        ],
+      };
+    }
+  }
+
+  async getQuote(input: GetQuoteInput): Promise<ToolHandlerResult> {
+    try {
+      await this.ensureGatewayReady();
+
+      if (this.context.config.IB_HEADLESS_MODE) {
+        await this.ensureAuth();
+      }
+
+      // Use basic preset for quick quote
+      const result = await this.context.ibClient.getMarketData(
+        input.symbol,
+        undefined,
+        "basic"
+      );
+
+      // Extract and format the key fields
+      const data = result.marketData?.[0] || result.marketData || {};
+      const quote = {
+        symbol: input.symbol,
+        last: data["31"] || data.lastPrice,
+        bid: data["84"] || data.bid,
+        ask: data["86"] || data.ask,
+        volume: data["87"] || data.volume,
+        bidSize: data["88"] || data.bidSize,
+        change: data["82"] || data.change,
+        changePercent: data["83"] || data.changePercent
+      };
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(quote, null, 2),
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: this.formatError(error),
+          },
+        ],
+      };
+    }
+  }
+
+  async getOptionsChain(input: GetOptionsChainInput): Promise<ToolHandlerResult> {
+    try {
+      await this.ensureGatewayReady();
+
+      if (this.context.config.IB_HEADLESS_MODE) {
+        await this.ensureAuth();
+      }
+
+      const result = await this.context.ibClient.getOptionsChain(
+        input.symbol,
+        input.conid,
+        input.includeGreeks !== false // Default to true
+      );
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: this.formatError(error),
+          },
+        ],
+      };
+    }
+  }
+
+  async findOptionContract(input: FindOptionContractInput): Promise<ToolHandlerResult> {
+    try {
+      await this.ensureGatewayReady();
+
+      if (this.context.config.IB_HEADLESS_MODE) {
+        await this.ensureAuth();
+      }
+
+      const result = await this.context.ibClient.findOptionContract(
+        input.symbol,
+        input.expiration,
+        input.strike,
+        input.right,
+        input.delta
+      );
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: this.formatError(error),
+          },
+        ],
+      };
+    }
+  }
+
+  async getPortfolioSummary(input: GetPortfolioSummaryInput): Promise<ToolHandlerResult> {
+    try {
+      await this.ensureGatewayReady();
+
+      if (this.context.config.IB_HEADLESS_MODE) {
+        await this.ensureAuth();
+      }
+
+      const result = await this.context.ibClient.getPortfolioSummary(
+        input.accountId,
+        input.groupBy
+      );
       return {
         content: [
           {

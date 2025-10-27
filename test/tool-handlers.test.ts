@@ -106,16 +106,16 @@ describe('ToolHandlers', () => {
       const result = await handlers.getMarketData({ symbol: 'AAPL' });
 
       expect(result.content).toBeDefined();
-      expect(mockIBClient.getMarketData).toHaveBeenCalledWith('AAPL', undefined);
+      expect(mockIBClient.getMarketData).toHaveBeenCalledWith('AAPL', undefined, undefined, undefined);
     });
 
-    it('should pass exchange parameter', async () => {
+    it('should pass exchange and fields parameters', async () => {
       const mockData = { symbol: 'AAPL', price: 150.25 };
       mockIBClient.getMarketData = vi.fn().mockResolvedValue(mockData);
 
-      await handlers.getMarketData({ symbol: 'AAPL', exchange: 'NASDAQ' });
+      await handlers.getMarketData({ symbol: 'AAPL', exchange: 'NASDAQ', fields: 'basic' });
 
-      expect(mockIBClient.getMarketData).toHaveBeenCalledWith('AAPL', 'NASDAQ');
+      expect(mockIBClient.getMarketData).toHaveBeenCalledWith('AAPL', 'NASDAQ', 'basic', undefined);
     });
   });
 

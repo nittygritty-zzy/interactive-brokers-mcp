@@ -23,7 +23,47 @@ export const GetPositionsZodShape = {
 
 export const GetMarketDataZodShape = {
   symbol: z.string(),
-  exchange: z.string().optional()
+  exchange: z.string().optional(),
+  fields: z.union([
+    z.array(z.string()),
+    z.enum(["basic", "detailed", "options", "fundamentals", "all"])
+  ]).optional(),
+  conid: z.number().optional()
+};
+
+export const GetHistoricalDataZodShape = {
+  symbol: z.string(),
+  conid: z.number().optional(),
+  period: z.enum(["1d", "1w", "1m", "3m", "6m", "1y"]).optional(),
+  bar: z.enum(["1min", "2min", "3min", "5min", "10min", "15min", "30min", "1h", "2h", "3h", "4h", "8h", "1d", "1w", "1m"]).optional(),
+  outsideRth: z.boolean().optional()
+};
+
+export const GetQuoteZodShape = {
+  symbol: z.string(),
+  type: z.enum(["stock", "option"]).optional()
+};
+
+export const GetOptionsChainZodShape = {
+  symbol: z.string(),
+  conid: z.number().optional(),
+  exchange: z.string().optional(),
+  includeGreeks: z.boolean().optional(),
+  strikeCount: z.number().optional(),
+  expirationCount: z.number().optional()
+};
+
+export const FindOptionContractZodShape = {
+  symbol: z.string(),
+  expiration: z.string().optional(),
+  strike: z.union([z.number(), z.string()]).optional(),
+  right: z.enum(["C", "P", "CALL", "PUT"]),
+  delta: z.number().optional()
+};
+
+export const GetPortfolioSummaryZodShape = {
+  accountId: z.string().optional(),
+  groupBy: z.enum(["symbol", "secType", "currency"]).optional()
 };
 
 export const PlaceStockOrderZodShape = {
@@ -72,6 +112,16 @@ export const GetPositionsZodSchema = z.object(GetPositionsZodShape);
 
 export const GetMarketDataZodSchema = z.object(GetMarketDataZodShape);
 
+export const GetHistoricalDataZodSchema = z.object(GetHistoricalDataZodShape);
+
+export const GetQuoteZodSchema = z.object(GetQuoteZodShape);
+
+export const GetOptionsChainZodSchema = z.object(GetOptionsChainZodShape);
+
+export const FindOptionContractZodSchema = z.object(FindOptionContractZodShape);
+
+export const GetPortfolioSummaryZodSchema = z.object(GetPortfolioSummaryZodShape);
+
 export const PlaceStockOrderZodSchema = z.object(PlaceStockOrderZodShape).refine(
   (data) => {
     if (data.orderType === "LMT" && data.price === undefined) {
@@ -115,6 +165,11 @@ export type AuthenticateInput = z.infer<typeof AuthenticateZodSchema>;
 export type GetAccountInfoInput = z.infer<typeof GetAccountInfoZodSchema>;
 export type GetPositionsInput = z.infer<typeof GetPositionsZodSchema>;
 export type GetMarketDataInput = z.infer<typeof GetMarketDataZodSchema>;
+export type GetHistoricalDataInput = z.infer<typeof GetHistoricalDataZodSchema>;
+export type GetQuoteInput = z.infer<typeof GetQuoteZodSchema>;
+export type GetOptionsChainInput = z.infer<typeof GetOptionsChainZodSchema>;
+export type FindOptionContractInput = z.infer<typeof FindOptionContractZodSchema>;
+export type GetPortfolioSummaryInput = z.infer<typeof GetPortfolioSummaryZodSchema>;
 export type PlaceStockOrderInput = z.infer<typeof PlaceStockOrderZodSchema>;
 export type PlaceOptionOrderInput = z.infer<typeof PlaceOptionOrderZodSchema>;
 export type GetOrderStatusInput = z.infer<typeof GetOrderStatusZodSchema>;
