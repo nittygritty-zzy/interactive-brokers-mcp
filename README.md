@@ -14,15 +14,50 @@ your IB account to retrieve market data, check positions, and place trades.
 
 ![Showcase of Interactive Brokers MCP](./IB-MCP.gif)
 
+**🚀 22 MCP Tools | 📊 Real-time & Historical Data | 📈 Options Trading | 💼 Portfolio Management | 🔍 Contract Search | 📉 P&L Tracking**
+
+---
+
+## Table of Contents
+
+- [Features](#features)
+- [Security Notice](#security-notice)
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [Headless Mode Configuration](#headless-mode-configuration)
+- [Configuration Variables](#configuration-variables)
+- [Available MCP Tools](#available-mcp-tools)
+- [Quick Start Guide](#quick-start-guide)
+- [Detailed Examples](#detailed-examples)
+- [Troubleshooting](#troubleshooting)
+- [Support](#support)
+- [License](#license)
+
 
 ## Features
 
-- **Interactive Brokers API Integration**: Full trading capabilities including account management, position tracking, real-time and historical market data, options chain analysis, and order management (market, limit, and stop orders)
-- **Comprehensive Market Data**: Real-time quotes with flexible field selection (basic, detailed, options Greeks, fundamentals), historical OHLCV data, and quick quote access
-- **Advanced Options Support**: Complete options chain retrieval, option contract search by criteria, and options trading with Greeks
-- **Portfolio Management**: Aggregated portfolio summaries with P&L tracking and grouping by security type
-- **Flexible Authentication**: Choose between browser-based OAuth authentication or headless mode with credentials for automated environments
-- **Simple Setup**: Run directly with `npx` - no Docker or additional installations required. Includes pre-configured IB Gateway and Java runtime for all platforms
+### Trading & Market Data
+- **Real-time Market Data**: Flexible field selection with presets (basic, detailed, options Greeks, fundamentals)
+- **Historical Data**: OHLCV data with configurable periods (1d to 1y) and bar sizes (1min to 1month)
+- **Options Chain**: Complete options chain with strikes, expirations, and Greeks
+- **Order Management**: Place, monitor, modify, and cancel orders (market, limit, stop)
+- **Multi-Asset Support**: Stocks, options, futures, bonds, and forex
+
+### Portfolio & Analysis
+- **Account Management**: Real-time account balances and positions
+- **P&L Tracking**: Profit and loss monitoring by account or aggregated
+- **Portfolio Summary**: Aggregated portfolio view with grouping by security type
+- **Trade History**: Historical trades with configurable lookback periods
+
+### Contract & Symbol Discovery
+- **Contract Search**: Multi-asset search with filters (exchange, currency, security type)
+- **Contract Details**: Detailed specifications for any contract
+- **Option Contract Finder**: Find specific options by strike, expiration, and right
+
+### Automation & Integration
+- **Flexible Authentication**: Browser-based OAuth or headless mode with credentials
+- **Simple Setup**: Run with `npx` - no Docker required. Includes IB Gateway and Java runtime
+- **MCP Protocol**: Standard Model Context Protocol for AI assistant integration
 
 ## Security Notice
 
@@ -188,6 +223,107 @@ management systems.
 | --------------------- | --------------------------------------------------------- |
 | `get_pnl`             | Get profit and loss information by account                |
 | `get_trades_history`  | Get trades history with configurable lookback period      |
+
+---
+
+## Quick Start Guide
+
+### 1. Check Your Account
+```json
+// Get account information
+{ "confirm": true }
+// Tool: get_account_info
+```
+
+### 2. Get Market Data
+```json
+// Quick quote
+{ "symbol": "AAPL" }
+// Tool: get_quote
+
+// Detailed market data with options Greeks
+{ "symbol": "SPY", "fields": "options" }
+// Tool: get_market_data
+
+// Historical data - last day with 5-minute bars
+{ "symbol": "AAPL", "period": "1d", "bar": "5min" }
+// Tool: get_historical_data
+```
+
+### 3. View Your Portfolio
+```json
+// Get current positions
+{ "accountId": "U12345" }
+// Tool: get_positions
+
+// Get portfolio summary
+{}
+// Tool: get_portfolio_summary
+
+// Get P&L
+{ "accountId": "U12345" }
+// Tool: get_pnl
+```
+
+### 4. Trade Stocks
+```json
+// Place market order
+{
+  "accountId": "U12345",
+  "symbol": "AAPL",
+  "action": "BUY",
+  "orderType": "MKT",
+  "quantity": 10
+}
+// Tool: place_stock_order
+
+// Check live orders
+{}
+// Tool: get_live_orders
+
+// Cancel an order
+{ "orderId": "12345", "accountId": "U12345" }
+// Tool: cancel_order
+```
+
+### 5. Options Trading
+```json
+// Get options chain
+{ "symbol": "SPY", "includeGreeks": true }
+// Tool: get_options_chain
+
+// Find specific option
+{ "symbol": "AAPL", "strike": 150, "right": "C", "expiration": "JAN25" }
+// Tool: find_option_contract
+
+// Place option order
+{
+  "accountId": "U12345",
+  "symbol": "SPY",
+  "expiration": "20250117",
+  "strike": 450,
+  "right": "C",
+  "action": "BUY",
+  "orderType": "MKT",
+  "quantity": 1
+}
+// Tool: place_option_order
+```
+
+### 6. Contract Search
+```json
+// Search for stocks
+{ "query": "AAPL", "secType": "STK" }
+// Tool: search_contracts
+
+// Get contract details
+{ "conid": 265598 }
+// Tool: get_contract_details
+```
+
+---
+
+## Detailed Examples
 
 ### Stock Orders
 
@@ -454,6 +590,69 @@ Get trades history using `get_trades_history`:
   "days": 30
 }
 ```
+
+---
+
+## Market Data Field Presets
+
+The `get_market_data` tool supports convenient field presets for common use cases:
+
+### `basic` - Quick Quote (6 fields)
+Perfect for quick price checks:
+- Last Price, Bid, Ask, Volume, Bid Size, Symbol
+
+### `detailed` - Comprehensive Quote (12 fields)
+Includes all basic fields plus:
+- High, Low, Change, Change %, Company Name, Last Size
+
+### `options` - Options with Greeks (9 fields)
+Specialized for options trading:
+- Last, Bid, Ask, Volume + Implied Volatility, Delta, Gamma, Theta
+
+### `fundamentals` - Fundamental Data (10 fields)
+For fundamental analysis:
+- Industry, P/E Ratio, Market Cap, Dividend Yield, 52-week High/Low, EPS, etc.
+
+### `all` - Complete Dataset (50+ fields)
+Every available field for comprehensive analysis
+
+### Custom Fields
+You can also specify custom field arrays:
+```json
+{
+  "symbol": "AAPL",
+  "fields": ["31", "84", "86", "87", "7633"]
+}
+```
+
+See [IBKR_API_REFERENCE.md](./IBKR_API_REFERENCE.md) for complete field code reference.
+
+---
+
+## Tips & Best Practices
+
+### Trading
+- **Always test with paper trading first** before using live accounts
+- Use `get_live_orders` to validate order execution
+- Set `suppressConfirmations: true` for automated trading workflows
+- Monitor orders with `get_order_status` for status updates
+
+### Market Data
+- Use `get_quote` for simple price checks (faster than `get_market_data`)
+- Use field presets for common scenarios instead of custom field arrays
+- Historical data supports periods from 1d to 1y with various bar sizes
+
+### Options
+- Use `get_options_chain` to browse available strikes and expirations
+- Use `find_option_contract` when you know specific criteria
+- Greeks are available through the `options` field preset
+
+### Portfolio Management
+- `get_portfolio_summary` provides aggregated views with grouping
+- `get_pnl` shows profit/loss by account
+- `get_trades_history` supports lookback periods (default: 7 days)
+
+---
 
 ## Troubleshooting
 
