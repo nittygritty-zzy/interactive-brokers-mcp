@@ -23,10 +23,11 @@ npm run watch        # Watch mode for TypeScript compilation
 
 ### Testing
 ```bash
-npm test             # Run tests once
-npm run test:watch   # Watch mode for tests
-npm run test:ui      # Interactive test UI
-npm run test:coverage # Run tests with coverage report
+npm test                          # Run all tests once
+npm run test:watch                # Watch mode for tests
+npm run test:ui                   # Interactive test UI
+npm run test:coverage             # Run tests with coverage report
+npx vitest run test/file.test.ts  # Run a single test file
 ```
 Tests use Vitest with setup in `test/setup.ts`.
 
