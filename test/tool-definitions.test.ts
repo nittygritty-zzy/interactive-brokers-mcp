@@ -1,7 +1,8 @@
 // test/tool-definitions.test.ts
 import { describe, it, expect } from 'vitest';
 import {
-  PlaceOrderZodSchema,
+  PlaceStockOrderZodSchema,
+  PlaceOptionOrderZodSchema,
   GetPositionsZodSchema,
   GetMarketDataZodSchema,
   GetLiveOrdersZodSchema,
@@ -10,7 +11,7 @@ import {
 } from '../src/tool-definitions.js';
 
 describe('Tool Definitions - Zod Schemas', () => {
-  describe('PlaceOrderZodSchema', () => {
+  describe('PlaceStockOrderZodSchema', () => {
     it('should accept valid market order', () => {
       const validOrder = {
         accountId: 'U12345',
@@ -20,7 +21,7 @@ describe('Tool Definitions - Zod Schemas', () => {
         quantity: 10,
       };
       
-      const result = PlaceOrderZodSchema.safeParse(validOrder);
+      const result = PlaceStockOrderZodSchema.safeParse(validOrder);
       expect(result.success).toBe(true);
     });
 
@@ -33,7 +34,7 @@ describe('Tool Definitions - Zod Schemas', () => {
         quantity: 1.5,
       };
       
-      const result = PlaceOrderZodSchema.safeParse(validOrder);
+      const result = PlaceStockOrderZodSchema.safeParse(validOrder);
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.quantity).toBe(1.5);
@@ -49,7 +50,7 @@ describe('Tool Definitions - Zod Schemas', () => {
         quantity: '2.75',
       };
       
-      const result = PlaceOrderZodSchema.safeParse(validOrder);
+      const result = PlaceStockOrderZodSchema.safeParse(validOrder);
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.quantity).toBe(2.75);
@@ -65,7 +66,7 @@ describe('Tool Definitions - Zod Schemas', () => {
         quantity: '100',
       };
       
-      const result = PlaceOrderZodSchema.safeParse(validOrder);
+      const result = PlaceStockOrderZodSchema.safeParse(validOrder);
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.quantity).toBe(100);
@@ -81,7 +82,7 @@ describe('Tool Definitions - Zod Schemas', () => {
         quantity: -10,
       };
       
-      const result = PlaceOrderZodSchema.safeParse(invalidOrder);
+      const result = PlaceStockOrderZodSchema.safeParse(invalidOrder);
       expect(result.success).toBe(false);
     });
 
@@ -94,7 +95,7 @@ describe('Tool Definitions - Zod Schemas', () => {
         quantity: 0,
       };
       
-      const result = PlaceOrderZodSchema.safeParse(invalidOrder);
+      const result = PlaceStockOrderZodSchema.safeParse(invalidOrder);
       expect(result.success).toBe(false);
     });
 
@@ -107,7 +108,7 @@ describe('Tool Definitions - Zod Schemas', () => {
         quantity: 10,
       };
       
-      const result = PlaceOrderZodSchema.safeParse(invalidOrder);
+      const result = PlaceStockOrderZodSchema.safeParse(invalidOrder);
       expect(result.success).toBe(false);
     });
 
@@ -121,7 +122,7 @@ describe('Tool Definitions - Zod Schemas', () => {
         price: 150.50,
       };
       
-      const result = PlaceOrderZodSchema.safeParse(validOrder);
+      const result = PlaceStockOrderZodSchema.safeParse(validOrder);
       expect(result.success).toBe(true);
     });
 
@@ -134,7 +135,7 @@ describe('Tool Definitions - Zod Schemas', () => {
         quantity: 10,
       };
       
-      const result = PlaceOrderZodSchema.safeParse(invalidOrder);
+      const result = PlaceStockOrderZodSchema.safeParse(invalidOrder);
       expect(result.success).toBe(false);
     });
 
@@ -148,7 +149,7 @@ describe('Tool Definitions - Zod Schemas', () => {
         stopPrice: 140.00,
       };
       
-      const result = PlaceOrderZodSchema.safeParse(validOrder);
+      const result = PlaceStockOrderZodSchema.safeParse(validOrder);
       expect(result.success).toBe(true);
     });
 
@@ -162,7 +163,110 @@ describe('Tool Definitions - Zod Schemas', () => {
         suppressConfirmations: true,
       };
       
-      const result = PlaceOrderZodSchema.safeParse(validOrder);
+      const result = PlaceStockOrderZodSchema.safeParse(validOrder);
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('PlaceOptionOrderZodSchema', () => {
+    it('should accept valid option market order with full expiration date', () => {
+      const validOrder = {
+        accountId: 'U12345',
+        symbol: 'AAPL',
+        expiration: '20250117',
+        strike: 150,
+        right: 'C' as const,
+        action: 'BUY' as const,
+        orderType: 'MKT' as const,
+        quantity: 1,
+      };
+
+      const result = PlaceOptionOrderZodSchema.safeParse(validOrder);
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept short expiration date format', () => {
+      const validOrder = {
+        accountId: 'U12345',
+        symbol: 'SPY',
+        expiration: '250117',
+        strike: 450,
+        right: 'PUT' as const,
+        action: 'SELL' as const,
+        orderType: 'MKT' as const,
+        quantity: 2,
+      };
+
+      const result = PlaceOptionOrderZodSchema.safeParse(validOrder);
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept strike as string and convert to number', () => {
+      const validOrder = {
+        accountId: 'U12345',
+        symbol: 'TSLA',
+        expiration: '20250117',
+        strike: '200.5',
+        right: 'CALL' as const,
+        action: 'BUY' as const,
+        orderType: 'MKT' as const,
+        quantity: 1,
+      };
+
+      const result = PlaceOptionOrderZodSchema.safeParse(validOrder);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.strike).toBe(200.5);
+      }
+    });
+
+    it('should accept option limit order with price', () => {
+      const validOrder = {
+        accountId: 'U12345',
+        symbol: 'AAPL',
+        expiration: '20250117',
+        strike: 150,
+        right: 'P' as const,
+        action: 'SELL' as const,
+        orderType: 'LMT' as const,
+        quantity: 3,
+        price: 5.5,
+      };
+
+      const result = PlaceOptionOrderZodSchema.safeParse(validOrder);
+      expect(result.success).toBe(true);
+    });
+
+    it('should require price for option LMT orders', () => {
+      const invalidOrder = {
+        accountId: 'U12345',
+        symbol: 'AAPL',
+        expiration: '20250117',
+        strike: 150,
+        right: 'C' as const,
+        action: 'BUY' as const,
+        orderType: 'LMT' as const,
+        quantity: 1,
+      };
+
+      const result = PlaceOptionOrderZodSchema.safeParse(invalidOrder);
+      expect(result.success).toBe(false);
+    });
+
+    it('should accept optional conid parameter', () => {
+      const validOrder = {
+        accountId: 'U12345',
+        symbol: 'SPY',
+        expiration: '20250117',
+        strike: 450,
+        right: 'C' as const,
+        action: 'BUY' as const,
+        orderType: 'MKT' as const,
+        quantity: 1,
+        conid: 12345678,
+      };
+
+      const result = PlaceOptionOrderZodSchema.safeParse(validOrder);
       expect(result.success).toBe(true);
     });
   });

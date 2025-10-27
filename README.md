@@ -137,14 +137,54 @@ management systems.
 
 ## Available MCP Tools
 
-| Tool               | Description                               |
-| ------------------ | ----------------------------------------- |
-| `get_account_info` | Retrieve account information and balances |
-| `get_positions`    | Get current positions and P&L             |
-| `get_market_data`  | Real-time market data for symbols         |
-| `place_order`      | Place market, limit, or stop orders       |
-| `get_order_status` | Check order execution status              |
-| `get_live_orders`  | Get all live/open orders for monitoring   |
+| Tool                  | Description                                               |
+| --------------------- | --------------------------------------------------------- |
+| `get_account_info`    | Retrieve account information and balances                 |
+| `get_positions`       | Get current positions and P&L                             |
+| `get_market_data`     | Real-time market data for symbols                         |
+| `place_stock_order`   | Place stock orders (market, limit, or stop)               |
+| `place_option_order`  | Place option orders with strike, expiration, and right    |
+| `get_order_status`    | Check order execution status (stocks and options)         |
+| `get_live_orders`     | Get all live/open orders for monitoring                   |
+
+### Stock Orders
+
+Place stock orders using `place_stock_order`:
+- Supports market (MKT), limit (LMT), and stop (STP) orders
+- Fractional shares supported
+- Auto-confirmation option available
+
+Example:
+```json
+{
+  "accountId": "U12345",
+  "symbol": "AAPL",
+  "action": "BUY",
+  "orderType": "MKT",
+  "quantity": 10
+}
+```
+
+### Option Orders
+
+Place option orders using `place_option_order`:
+- Requires symbol, expiration (YYYYMMDD or YYMMDD), strike, and right (C/P or CALL/PUT)
+- Supports market, limit, and stop orders
+- Optional contract ID (conid) for direct specification
+
+Example:
+```json
+{
+  "accountId": "U12345",
+  "symbol": "AAPL",
+  "expiration": "20250117",
+  "strike": 150,
+  "right": "C",
+  "action": "BUY",
+  "orderType": "MKT",
+  "quantity": 1
+}
+```
 
 ## Troubleshooting
 

@@ -25,7 +25,8 @@ describe('ToolHandlers', () => {
       getAccountInfo: vi.fn().mockResolvedValue({ accounts: [] }),
       getPositions: vi.fn().mockResolvedValue([]),
       getMarketData: vi.fn().mockResolvedValue({ price: 150 }),
-      placeOrder: vi.fn().mockResolvedValue({ orderId: '123' }),
+      placeStockOrder: vi.fn().mockResolvedValue({ orderId: '123' }),
+      placeOptionOrder: vi.fn().mockResolvedValue({ orderId: '456' }),
       getOrderStatus: vi.fn().mockResolvedValue({ status: 'Filled' }),
       getOrders: vi.fn().mockResolvedValue([]),
       confirmOrder: vi.fn().mockResolvedValue({ confirmed: true }),
@@ -118,10 +119,10 @@ describe('ToolHandlers', () => {
     });
   });
 
-  describe('placeOrder', () => {
-    it('should place market order', async () => {
+  describe('placeStockOrder', () => {
+    it('should place stock market order', async () => {
       const mockResponse = { orderId: '123', status: 'Submitted' };
-      mockIBClient.placeOrder = vi.fn().mockResolvedValue(mockResponse);
+      mockIBClient.placeStockOrder = vi.fn().mockResolvedValue(mockResponse);
 
       const orderInput = {
         accountId: 'U12345',
@@ -131,10 +132,10 @@ describe('ToolHandlers', () => {
         quantity: 10,
       };
 
-      const result = await handlers.placeOrder(orderInput);
+      const result = await handlers.placeStockOrder(orderInput);
 
       expect(result.content).toBeDefined();
-      expect(mockIBClient.placeOrder).toHaveBeenCalledWith(
+      expect(mockIBClient.placeStockOrder).toHaveBeenCalledWith(
         expect.objectContaining({
           accountId: 'U12345',
           symbol: 'AAPL',
@@ -145,9 +146,9 @@ describe('ToolHandlers', () => {
       );
     });
 
-    it('should place limit order with price', async () => {
+    it('should place stock limit order with price', async () => {
       const mockResponse = { orderId: '123', status: 'Submitted' };
-      mockIBClient.placeOrder = vi.fn().mockResolvedValue(mockResponse);
+      mockIBClient.placeStockOrder = vi.fn().mockResolvedValue(mockResponse);
 
       const orderInput = {
         accountId: 'U12345',
@@ -158,17 +159,17 @@ describe('ToolHandlers', () => {
         price: 150.50,
       };
 
-      await handlers.placeOrder(orderInput);
+      await handlers.placeStockOrder(orderInput);
 
-      expect(mockIBClient.placeOrder).toHaveBeenCalledWith(
+      expect(mockIBClient.placeStockOrder).toHaveBeenCalledWith(
         expect.objectContaining({
           price: 150.50,
         })
       );
     });
 
-    it('should handle order placement errors', async () => {
-      mockIBClient.placeOrder = vi.fn().mockRejectedValue(new Error('Order failed'));
+    it('should handle stock order placement errors', async () => {
+      mockIBClient.placeStockOrder = vi.fn().mockRejectedValue(new Error('Order failed'));
 
       const orderInput = {
         accountId: 'U12345',
@@ -178,9 +179,89 @@ describe('ToolHandlers', () => {
         quantity: 10,
       };
 
-      const result = await handlers.placeOrder(orderInput);
+      const result = await handlers.placeStockOrder(orderInput);
 
       expect(result.content[0].text).toContain('Order failed');
+    });
+  });
+
+  describe('placeOptionOrder', () => {
+    it('should place option market order', async () => {
+      const mockResponse = { orderId: '456', status: 'Submitted' };
+      mockIBClient.placeOptionOrder = vi.fn().mockResolvedValue(mockResponse);
+
+      const orderInput = {
+        accountId: 'U12345',
+        symbol: 'AAPL',
+        expiration: '20250117',
+        strike: 150,
+        right: 'C' as const,
+        action: 'BUY' as const,
+        orderType: 'MKT' as const,
+        quantity: 1,
+      };
+
+      const result = await handlers.placeOptionOrder(orderInput);
+
+      expect(result.content).toBeDefined();
+      expect(mockIBClient.placeOptionOrder).toHaveBeenCalledWith(
+        expect.objectContaining({
+          accountId: 'U12345',
+          symbol: 'AAPL',
+          expiration: '20250117',
+          strike: 150,
+          right: 'C',
+          action: 'BUY',
+          orderType: 'MKT',
+          quantity: 1,
+        })
+      );
+    });
+
+    it('should place option limit order with price', async () => {
+      const mockResponse = { orderId: '456', status: 'Submitted' };
+      mockIBClient.placeOptionOrder = vi.fn().mockResolvedValue(mockResponse);
+
+      const orderInput = {
+        accountId: 'U12345',
+        symbol: 'SPY',
+        expiration: '250117',
+        strike: 450,
+        right: 'PUT' as const,
+        action: 'SELL' as const,
+        orderType: 'LMT' as const,
+        quantity: 2,
+        price: 5.5,
+      };
+
+      await handlers.placeOptionOrder(orderInput);
+
+      expect(mockIBClient.placeOptionOrder).toHaveBeenCalledWith(
+        expect.objectContaining({
+          price: 5.5,
+          strike: 450,
+          right: 'PUT',
+        })
+      );
+    });
+
+    it('should handle option order placement errors', async () => {
+      mockIBClient.placeOptionOrder = vi.fn().mockRejectedValue(new Error('Option order failed'));
+
+      const orderInput = {
+        accountId: 'U12345',
+        symbol: 'TSLA',
+        expiration: '20250117',
+        strike: 200,
+        right: 'C' as const,
+        action: 'BUY' as const,
+        orderType: 'MKT' as const,
+        quantity: 1,
+      };
+
+      const result = await handlers.placeOptionOrder(orderInput);
+
+      expect(result.content[0].text).toContain('Option order failed');
     });
   });
 

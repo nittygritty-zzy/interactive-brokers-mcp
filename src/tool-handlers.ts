@@ -8,7 +8,8 @@ import {
   GetAccountInfoInput,
   GetPositionsInput,
   GetMarketDataInput,
-  PlaceOrderInput,
+  PlaceStockOrderInput,
+  PlaceOptionOrderInput,
   GetOrderStatusInput,
   GetLiveOrdersInput,
   ConfirmOrderInput,
@@ -374,25 +375,69 @@ export class ToolHandlers {
     }
   }
 
-  async placeOrder(input: PlaceOrderInput): Promise<ToolHandlerResult> {
+  async placeStockOrder(input: PlaceStockOrderInput): Promise<ToolHandlerResult> {
     try {
       // Ensure Gateway is ready
       await this.ensureGatewayReady();
-      
+
       // Ensure authentication in headless mode
       if (this.context.config.IB_HEADLESS_MODE) {
         await this.ensureAuth();
       }
-      
-      const result = await this.context.ibClient.placeOrder({
+
+      const result = await this.context.ibClient.placeStockOrder({
         accountId: input.accountId,
         symbol: input.symbol,
         action: input.action,
         orderType: input.orderType,
-        quantity: input.quantity, // Already converted by Zod schema
+        quantity: input.quantity,
         price: input.price,
         stopPrice: input.stopPrice,
         suppressConfirmations: input.suppressConfirmations,
+      });
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: this.formatError(error),
+          },
+        ],
+      };
+    }
+  }
+
+  async placeOptionOrder(input: PlaceOptionOrderInput): Promise<ToolHandlerResult> {
+    try {
+      // Ensure Gateway is ready
+      await this.ensureGatewayReady();
+
+      // Ensure authentication in headless mode
+      if (this.context.config.IB_HEADLESS_MODE) {
+        await this.ensureAuth();
+      }
+
+      const result = await this.context.ibClient.placeOptionOrder({
+        accountId: input.accountId,
+        symbol: input.symbol,
+        expiration: input.expiration,
+        strike: input.strike,
+        right: input.right,
+        action: input.action,
+        orderType: input.orderType,
+        quantity: input.quantity,
+        price: input.price,
+        stopPrice: input.stopPrice,
+        suppressConfirmations: input.suppressConfirmations,
+        conid: input.conid,
       });
       return {
         content: [
@@ -481,12 +526,12 @@ export class ToolHandlers {
     try {
       // Ensure Gateway is ready
       await this.ensureGatewayReady();
-      
+
       // Ensure authentication in headless mode
       if (this.context.config.IB_HEADLESS_MODE) {
         await this.ensureAuth();
       }
-      
+
       const result = await this.context.ibClient.confirmOrder(input.replyId, input.messageIds);
       return {
         content: [
@@ -507,4 +552,5 @@ export class ToolHandlers {
       };
     }
   }
+
 }

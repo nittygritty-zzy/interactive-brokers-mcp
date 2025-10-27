@@ -26,7 +26,7 @@ export const GetMarketDataZodShape = {
   exchange: z.string().optional()
 };
 
-export const PlaceOrderZodShape = {
+export const PlaceStockOrderZodShape = {
   accountId: z.string(),
   symbol: z.string(),
   action: z.enum(["BUY", "SELL"]),
@@ -35,6 +35,21 @@ export const PlaceOrderZodShape = {
   price: z.number().optional(),
   stopPrice: z.number().optional(),
   suppressConfirmations: z.boolean().optional()
+};
+
+export const PlaceOptionOrderZodShape = {
+  accountId: z.string(),
+  symbol: z.string(),
+  expiration: z.string(), // Format: YYYYMMDD or YYMMDD
+  strike: z.union([z.number(), z.string().transform(val => parseFloat(val))]),
+  right: z.enum(["C", "P", "CALL", "PUT"]),
+  action: z.enum(["BUY", "SELL"]),
+  orderType: z.enum(["MKT", "LMT", "STP"]),
+  quantity: IntegerOrStringIntegerZod,
+  price: z.number().optional(),
+  stopPrice: z.number().optional(),
+  suppressConfirmations: z.boolean().optional(),
+  conid: z.number().optional() // Allow direct contract ID specification
 };
 
 export const GetOrderStatusZodShape = {
@@ -57,7 +72,23 @@ export const GetPositionsZodSchema = z.object(GetPositionsZodShape);
 
 export const GetMarketDataZodSchema = z.object(GetMarketDataZodShape);
 
-export const PlaceOrderZodSchema = z.object(PlaceOrderZodShape).refine(
+export const PlaceStockOrderZodSchema = z.object(PlaceStockOrderZodShape).refine(
+  (data) => {
+    if (data.orderType === "LMT" && data.price === undefined) {
+      return false;
+    }
+    if (data.orderType === "STP" && data.stopPrice === undefined) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: "LMT orders require price, STP orders require stopPrice",
+    path: ["price", "stopPrice"]
+  }
+);
+
+export const PlaceOptionOrderZodSchema = z.object(PlaceOptionOrderZodShape).refine(
   (data) => {
     if (data.orderType === "LMT" && data.price === undefined) {
       return false;
@@ -84,7 +115,8 @@ export type AuthenticateInput = z.infer<typeof AuthenticateZodSchema>;
 export type GetAccountInfoInput = z.infer<typeof GetAccountInfoZodSchema>;
 export type GetPositionsInput = z.infer<typeof GetPositionsZodSchema>;
 export type GetMarketDataInput = z.infer<typeof GetMarketDataZodSchema>;
-export type PlaceOrderInput = z.infer<typeof PlaceOrderZodSchema>;
+export type PlaceStockOrderInput = z.infer<typeof PlaceStockOrderZodSchema>;
+export type PlaceOptionOrderInput = z.infer<typeof PlaceOptionOrderZodSchema>;
 export type GetOrderStatusInput = z.infer<typeof GetOrderStatusZodSchema>;
 export type GetLiveOrdersInput = z.infer<typeof GetLiveOrdersZodSchema>;
 export type ConfirmOrderInput = z.infer<typeof ConfirmOrderZodSchema>;

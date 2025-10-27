@@ -11,7 +11,7 @@ export interface IBClientConfig {
   port: number;
 }
 
-export interface OrderRequest {
+export interface StockOrderRequest {
   accountId: string;
   symbol: string;
   action: "BUY" | "SELL";
@@ -20,6 +20,21 @@ export interface OrderRequest {
   price?: number;
   stopPrice?: number;
   suppressConfirmations?: boolean;
+}
+
+export interface OptionOrderRequest {
+  accountId: string;
+  symbol: string;
+  expiration: string; // Format: YYYYMMDD or YYMMDD
+  strike: number;
+  right: "C" | "P" | "CALL" | "PUT";
+  action: "BUY" | "SELL";
+  orderType: "MKT" | "LMT" | "STP";
+  quantity: number;
+  price?: number;
+  stopPrice?: number;
+  suppressConfirmations?: boolean;
+  conid?: number; // Optional direct contract ID
 }
 
 const isError = (error: unknown): error is Error => {
@@ -385,27 +400,29 @@ export class IBClient {
     );
   }
 
-  async placeOrder(orderRequest: OrderRequest): Promise<any> {
+  async placeStockOrder(orderRequest: StockOrderRequest): Promise<any> {
     try {
       // First, get the contract ID for the symbol
       const searchResponse = await this.client.get(
         `/iserver/secdef/search?symbol=${orderRequest.symbol}`
       );
-      
+
       if (!searchResponse.data || searchResponse.data.length === 0) {
-        throw new Error(`Symbol ${orderRequest.symbol} not found`);
+        throw new Error(`Stock symbol ${orderRequest.symbol} not found`);
       }
 
-      const contract = searchResponse.data[0];
+      // Find the stock contract (secType: STK)
+      const contract = searchResponse.data.find((c: any) => c.assetClass === 'STK' || c.secType === 'STK')
+                       || searchResponse.data[0];
       const conid = contract.conid;
 
       // Prepare order object
       const order = {
-        conid: Number(conid), // Ensure conid is number
+        conid: Number(conid),
         orderType: orderRequest.orderType,
         side: orderRequest.action,
-        quantity: Number(orderRequest.quantity), // Ensure quantity is number
-        tif: "DAY", // Time in force
+        quantity: Number(orderRequest.quantity),
+        tif: "DAY",
       };
 
       // Add price for limit orders
@@ -429,11 +446,11 @@ export class IBClient {
       // Check if we received confirmation messages that need to be handled
       if (response.data && Array.isArray(response.data) && response.data.length > 0) {
         const firstResponse = response.data[0];
-        
+
         // Check if this is a confirmation message response
         if (firstResponse.id && firstResponse.message && firstResponse.messageIds && orderRequest.suppressConfirmations) {
-          Logger.log("Order confirmation received, automatically confirming...", firstResponse);
-          
+          Logger.log("Stock order confirmation received, automatically confirming...", firstResponse);
+
           // Automatically confirm all messages
           const confirmResponse = await this.confirmOrder(firstResponse.id, firstResponse.messageIds);
           return confirmResponse;
@@ -442,16 +459,157 @@ export class IBClient {
 
       return response.data;
     } catch (error) {
-      Logger.error("Failed to place order:", error);
-      
+      Logger.error("Failed to place stock order:", error);
+
       // Check if this is likely an authentication error
       if (this.isAuthenticationError(error)) {
         const authError = new Error("Authentication required to place orders. Please authenticate with Interactive Brokers first.");
         (authError as any).isAuthError = true;
         throw authError;
       }
-      
-      throw new Error("Failed to place order");
+
+      throw new Error("Failed to place stock order");
+    }
+  }
+
+  async placeOptionOrder(orderRequest: OptionOrderRequest): Promise<any> {
+    try {
+      let conid: number;
+
+      // If conid is directly provided, use it
+      if (orderRequest.conid) {
+        conid = orderRequest.conid;
+        Logger.log(`Using provided contract ID: ${conid}`);
+      } else {
+        // Normalize right to single letter
+        const right = orderRequest.right === "CALL" ? "C" : orderRequest.right === "PUT" ? "P" : orderRequest.right;
+
+        // Search for option contract using secdef/info endpoint
+        // Format expiration: ensure YYYYMMDD format
+        let expiration = orderRequest.expiration;
+        if (expiration.length === 6) {
+          // Convert YYMMDD to YYYYMMDD
+          const year = parseInt(expiration.substring(0, 2));
+          const fullYear = year < 50 ? 2000 + year : 1900 + year;
+          expiration = fullYear.toString() + expiration.substring(2);
+        }
+
+        Logger.log(`Searching for option: ${orderRequest.symbol} ${expiration} ${orderRequest.strike}${right}`);
+
+        // First get the underlying stock conid
+        const stockSearchResponse = await this.client.get(
+          `/iserver/secdef/search?symbol=${orderRequest.symbol}`
+        );
+
+        if (!stockSearchResponse.data || stockSearchResponse.data.length === 0) {
+          throw new Error(`Underlying symbol ${orderRequest.symbol} not found`);
+        }
+
+        const stockContract = stockSearchResponse.data.find((c: any) => c.assetClass === 'STK' || c.secType === 'STK')
+                              || stockSearchResponse.data[0];
+        const underlyingConid = stockContract.conid;
+
+        // Search for the specific option contract
+        const optionSearchResponse = await this.client.get(
+          `/iserver/secdef/search?symbol=${orderRequest.symbol}&secType=OPT`
+        );
+
+        Logger.log(`Option search results:`, optionSearchResponse.data);
+
+        // Try to find exact match based on strike, expiration, and right
+        let optionContract = null;
+        if (optionSearchResponse.data && optionSearchResponse.data.length > 0) {
+          // The API may return option contracts - try to match by description or sections
+          for (const contract of optionSearchResponse.data) {
+            const desc = contract.description || '';
+            const sections = contract.sections || [];
+
+            // Check if this matches our criteria
+            if (sections.length > 0) {
+              const section = sections[0];
+              if (section.secType === 'OPT') {
+                // Get detailed contract info
+                try {
+                  const infoResponse = await this.client.get(`/iserver/secdef/info?conid=${contract.conid}`);
+                  Logger.log(`Contract ${contract.conid} info:`, infoResponse.data);
+
+                  // Check if this matches our strike, expiration, and right
+                  // This is a best-effort match - IB API structure can vary
+                  optionContract = contract;
+                  break;
+                } catch (infoError) {
+                  Logger.warn(`Could not get info for contract ${contract.conid}`);
+                }
+              }
+            }
+          }
+        }
+
+        if (!optionContract) {
+          throw new Error(
+            `Option contract not found for ${orderRequest.symbol} ` +
+            `${expiration} ${orderRequest.strike}${right}. ` +
+            `Try using the conid parameter if you know the contract ID.`
+          );
+        }
+
+        conid = optionContract.conid;
+        Logger.log(`Found option contract ID: ${conid}`);
+      }
+
+      // Prepare order object
+      const order = {
+        conid: Number(conid),
+        orderType: orderRequest.orderType,
+        side: orderRequest.action,
+        quantity: Number(orderRequest.quantity),
+        tif: "DAY",
+      };
+
+      // Add price for limit orders
+      if (orderRequest.orderType === "LMT" && orderRequest.price !== undefined) {
+        (order as any).price = Number(orderRequest.price);
+      }
+
+      // Add stop price for stop orders
+      if (orderRequest.orderType === "STP" && orderRequest.stopPrice !== undefined) {
+        (order as any).auxPrice = Number(orderRequest.stopPrice);
+      }
+
+      // Place the order
+      const response = await this.client.post(
+        `/iserver/account/${orderRequest.accountId}/orders`,
+        {
+          orders: [order],
+        }
+      );
+
+      // Check if we received confirmation messages that need to be handled
+      if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+        const firstResponse = response.data[0];
+
+        // Check if this is a confirmation message response
+        if (firstResponse.id && firstResponse.message && firstResponse.messageIds && orderRequest.suppressConfirmations) {
+          Logger.log("Option order confirmation received, automatically confirming...", firstResponse);
+
+          // Automatically confirm all messages
+          const confirmResponse = await this.confirmOrder(firstResponse.id, firstResponse.messageIds);
+          return confirmResponse;
+        }
+      }
+
+      return response.data;
+    } catch (error) {
+      Logger.error("Failed to place option order:", error);
+
+      // Check if this is likely an authentication error
+      if (this.isAuthenticationError(error)) {
+        const authError = new Error("Authentication required to place option orders. Please authenticate with Interactive Brokers first.");
+        (authError as any).isAuthError = true;
+        throw authError;
+      }
+
+      throw new Error(`Failed to place option order: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 

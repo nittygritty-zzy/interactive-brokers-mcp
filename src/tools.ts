@@ -2,12 +2,13 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { IBClient } from "./ib-client.js";
 import { IBGatewayManager } from "./gateway-manager.js";
 import { ToolHandlers, ToolHandlerContext } from "./tool-handlers.js";
-import { 
+import {
   AuthenticateZodShape,
-  GetAccountInfoZodShape, 
+  GetAccountInfoZodShape,
   GetPositionsZodShape,
   GetMarketDataZodShape,
-  PlaceOrderZodShape,
+  PlaceStockOrderZodShape,
+  PlaceOptionOrderZodShape,
   GetOrderStatusZodShape,
   GetLiveOrdersZodShape,
   ConfirmOrderZodShape
@@ -63,16 +64,29 @@ export function registerTools(
     async (args) => await handlers.getMarketData(args)
   );
 
-  // Register place_order tool
+  // Register place_stock_order tool
   server.tool(
-    "place_order",
-    "Place a trading order. Examples:\n" +
-    "- Market buy: `{ \"accountId\":\"abc\",\"symbol\":\"AAPL\",\"action\":\"BUY\",\"orderType\":\"MKT\",\"quantity\":1 }`\n" +
-    "- Limit sell: `{ \"accountId\":\"abc\",\"symbol\":\"AAPL\",\"action\":\"SELL\",\"orderType\":\"LMT\",\"quantity\":1,\"price\":185.5 }`\n" +
-    "- Stop sell: `{ \"accountId\":\"abc\",\"symbol\":\"AAPL\",\"action\":\"SELL\",\"orderType\":\"STP\",\"quantity\":1,\"stopPrice\":180 }`\n" +
-    "- Suppress confirmations: `{ \"accountId\":\"abc\",\"symbol\":\"AAPL\",\"action\":\"BUY\",\"orderType\":\"MKT\",\"quantity\":1,\"suppressConfirmations\":true }`",
-    PlaceOrderZodShape,
-    async (args) => await handlers.placeOrder(args)
+    "place_stock_order",
+    "Place a stock trading order (for equities only). Examples:\n" +
+    "- Market buy: `{ \"accountId\":\"U12345\",\"symbol\":\"AAPL\",\"action\":\"BUY\",\"orderType\":\"MKT\",\"quantity\":10 }`\n" +
+    "- Limit sell: `{ \"accountId\":\"U12345\",\"symbol\":\"AAPL\",\"action\":\"SELL\",\"orderType\":\"LMT\",\"quantity\":10,\"price\":185.5 }`\n" +
+    "- Stop sell: `{ \"accountId\":\"U12345\",\"symbol\":\"TSLA\",\"action\":\"SELL\",\"orderType\":\"STP\",\"quantity\":5,\"stopPrice\":180 }`\n" +
+    "- Fractional shares: `{ \"accountId\":\"U12345\",\"symbol\":\"SPY\",\"action\":\"BUY\",\"orderType\":\"MKT\",\"quantity\":\"1.5\" }`\n" +
+    "- Auto-confirm: `{ \"accountId\":\"U12345\",\"symbol\":\"AAPL\",\"action\":\"BUY\",\"orderType\":\"MKT\",\"quantity\":1,\"suppressConfirmations\":true }`",
+    PlaceStockOrderZodShape,
+    async (args) => await handlers.placeStockOrder(args)
+  );
+
+  // Register place_option_order tool
+  server.tool(
+    "place_option_order",
+    "Place an option trading order. Requires symbol, expiration, strike, and right (C/P). Examples:\n" +
+    "- Buy call: `{ \"accountId\":\"U12345\",\"symbol\":\"AAPL\",\"expiration\":\"20250117\",\"strike\":150,\"right\":\"C\",\"action\":\"BUY\",\"orderType\":\"MKT\",\"quantity\":1 }`\n" +
+    "- Sell put limit: `{ \"accountId\":\"U12345\",\"symbol\":\"TSLA\",\"expiration\":\"250117\",\"strike\":200,\"right\":\"PUT\",\"action\":\"SELL\",\"orderType\":\"LMT\",\"quantity\":2,\"price\":5.5 }`\n" +
+    "- With contract ID: `{ \"accountId\":\"U12345\",\"symbol\":\"SPY\",\"expiration\":\"20250117\",\"strike\":450,\"right\":\"C\",\"action\":\"BUY\",\"orderType\":\"MKT\",\"quantity\":1,\"conid\":12345678 }`\n" +
+    "Note: Expiration format is YYYYMMDD or YYMMDD. Right can be 'C'/'CALL' or 'P'/'PUT'. Use 'conid' parameter if you know the exact contract ID.",
+    PlaceOptionOrderZodShape,
+    async (args) => await handlers.placeOptionOrder(args)
   );
 
   // Register get_order_status tool

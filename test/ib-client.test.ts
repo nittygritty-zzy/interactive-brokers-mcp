@@ -186,20 +186,20 @@ describe('IBClient', () => {
       });
     });
 
-    describe('placeOrder', () => {
-      it('should place market order successfully', async () => {
+    describe('placeStockOrder', () => {
+      it('should place stock market order successfully', async () => {
         const mockClient = vi.mocked(axios.create).mock.results[0].value;
-        
+
         // Mock search response
         mockClient.get.mockResolvedValueOnce({
-          data: [{ conid: 265598, symbol: 'AAPL' }],
+          data: [{ conid: 265598, symbol: 'AAPL', assetClass: 'STK' }],
         });
-        
+
         // Mock order response
         mockClient.post.mockResolvedValueOnce({
           data: [{ id: 'order-123', status: 'Submitted' }],
         });
-        
+
         const orderRequest = {
           accountId: 'U12345',
           symbol: 'AAPL',
@@ -207,9 +207,9 @@ describe('IBClient', () => {
           orderType: 'MKT' as const,
           quantity: 10,
         };
-        
-        const result = await client.placeOrder(orderRequest);
-        
+
+        const result = await client.placeStockOrder(orderRequest);
+
         expect(mockClient.post).toHaveBeenCalledWith(
           '/iserver/account/U12345/orders',
           expect.objectContaining({
@@ -228,15 +228,15 @@ describe('IBClient', () => {
 
       it('should include price for limit orders', async () => {
         const mockClient = vi.mocked(axios.create).mock.results[0].value;
-        
+
         mockClient.get.mockResolvedValueOnce({
-          data: [{ conid: 265598, symbol: 'AAPL' }],
+          data: [{ conid: 265598, symbol: 'AAPL', assetClass: 'STK' }],
         });
-        
+
         mockClient.post.mockResolvedValueOnce({
           data: [{ id: 'order-123' }],
         });
-        
+
         const orderRequest = {
           accountId: 'U12345',
           symbol: 'AAPL',
@@ -245,9 +245,9 @@ describe('IBClient', () => {
           quantity: 10,
           price: 150.50,
         };
-        
-        await client.placeOrder(orderRequest);
-        
+
+        await client.placeStockOrder(orderRequest);
+
         expect(mockClient.post).toHaveBeenCalledWith(
           expect.any(String),
           expect.objectContaining({
@@ -262,15 +262,15 @@ describe('IBClient', () => {
 
       it('should include stopPrice for stop orders', async () => {
         const mockClient = vi.mocked(axios.create).mock.results[0].value;
-        
+
         mockClient.get.mockResolvedValueOnce({
-          data: [{ conid: 265598, symbol: 'AAPL' }],
+          data: [{ conid: 265598, symbol: 'AAPL', assetClass: 'STK' }],
         });
-        
+
         mockClient.post.mockResolvedValueOnce({
           data: [{ id: 'order-123' }],
         });
-        
+
         const orderRequest = {
           accountId: 'U12345',
           symbol: 'AAPL',
@@ -279,9 +279,9 @@ describe('IBClient', () => {
           quantity: 10,
           stopPrice: 140.00,
         };
-        
-        await client.placeOrder(orderRequest);
-        
+
+        await client.placeStockOrder(orderRequest);
+
         expect(mockClient.post).toHaveBeenCalledWith(
           expect.any(String),
           expect.objectContaining({
