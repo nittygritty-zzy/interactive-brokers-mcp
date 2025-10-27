@@ -74,7 +74,6 @@ typings/
 
 # Nuxt.js build / generate output
 .nuxt
-dist
 
 # Gatsby files
 .cache/
@@ -101,7 +100,6 @@ public
 # Built files (but not IB Gateway distribution files or runtime libs)
 build/
 !ib-gateway/clientportal.gw/build/
-dist/
 !ib-gateway/clientportal.gw/dist/
 lib/
 !runtime/*/lib/

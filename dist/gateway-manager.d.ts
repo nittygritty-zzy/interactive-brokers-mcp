@@ -1,0 +1,30 @@
+export declare class IBGatewayManager {
+    private gatewayProcess;
+    private gatewayDir;
+    private jreDir;
+    private isStarting;
+    private isReady;
+    private useStderr;
+    private cleanupHandlersRegistered;
+    private currentPort;
+    private backgroundStartupPromise;
+    constructor();
+    private log;
+    private findExistingGateway;
+    quickCheckExistingGateway(): Promise<number | null>;
+    private registerCleanupHandlers;
+    private cleanup;
+    private getJavaPath;
+    ensureGatewayExists(): Promise<void>;
+    quickStartGateway(): Promise<void>;
+    startGatewayAsync(): void;
+    ensureGatewayReady(): Promise<void>;
+    startGateway(): Promise<void>;
+    private startGatewayInternal;
+    private waitForGateway;
+    private checkGatewayHealth;
+    stopGateway(): Promise<void>;
+    isGatewayReady(): boolean;
+    getGatewayUrl(): string;
+    getCurrentPort(): number;
+}
