@@ -87,7 +87,25 @@ You only need:
 
 ## Quick Start
 
+### Option 1: Install from GitHub (Recommended - Latest Features)
+
 Add this MCP server to your Cursor/Claude configuration:
+
+```json
+{
+  "mcpServers": {
+    "interactive-brokers": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "github:nittygritty-zzy/interactive-brokers-mcp"
+      ]
+    }
+  }
+}
+```
+
+### Option 2: Install from npm
 
 ```json
 {
@@ -115,7 +133,7 @@ server configuration:
   "mcpServers": {
     "interactive-brokers": {
       "command": "npx",
-      "args": ["-y", "interactive-brokers-mcp"],
+      "args": ["-y", "github:nittygritty-zzy/interactive-brokers-mcp"],
       "env": {
         "IB_HEADLESS_MODE": "true",
         "IB_USERNAME": "your_ib_username",
@@ -147,7 +165,7 @@ To enable paper trading, add `"IB_PAPER_TRADING": "true"` to your environment va
   "mcpServers": {
     "interactive-brokers": {
       "command": "npx",
-      "args": ["-y", "interactive-brokers-mcp"],
+      "args": ["-y", "github:nittygritty-zzy/interactive-brokers-mcp"],
       "env": {
         "IB_HEADLESS_MODE": "true",
         "IB_USERNAME": "your_ib_username",
